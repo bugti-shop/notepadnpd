@@ -461,39 +461,63 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             },
           });
           
-          console.log('[GoogleAuth] SocialLogin result:', result);
+          console.log('[GoogleAuth] SocialLogin raw result:', JSON.stringify(result, null, 2));
           
           if (result?.provider === 'google' && result.result) {
-            // Check if it's an online response (has profile)
-            if (result.result.responseType === 'online') {
-              const onlineResult = result.result;
-              const profile = onlineResult.profile;
-              const accessToken = onlineResult.accessToken?.token;
-              const idToken = onlineResult.idToken;
+            const loginResult = result.result as any;
+            
+            // Extract profile - handle different response structures
+            let profile = loginResult.profile;
+            let accessToken = loginResult.accessToken?.token || loginResult.accessToken;
+            let idToken = loginResult.idToken;
+            
+            // Some versions return data directly on result
+            if (!profile && loginResult.user) {
+              profile = loginResult.user;
+            }
+            
+            // Handle serverAuthCode for offline access
+            if (loginResult.serverAuthCode) {
+              console.log('[GoogleAuth] Received serverAuthCode for offline access');
+            }
+            
+            console.log('[GoogleAuth] Extracted profile:', JSON.stringify(profile, null, 2));
+            console.log('[GoogleAuth] Access token present:', !!accessToken);
+            
+            if (profile) {
+              // Build user object - handle various field naming conventions
+              const googleUser: GoogleUser = {
+                id: profile.id || profile.userId || profile.sub || '',
+                email: profile.email || '',
+                name: profile.name || profile.displayName || `${profile.givenName || ''} ${profile.familyName || ''}`.trim() || '',
+                givenName: profile.givenName || profile.given_name || undefined,
+                familyName: profile.familyName || profile.family_name || undefined,
+                imageUrl: profile.imageUrl || profile.picture || profile.photoUrl || undefined,
+              };
               
-              if (profile && accessToken) {
-                const googleUser: GoogleUser = {
-                  id: profile.id || '',
-                  email: profile.email || '',
-                  name: profile.name || '',
-                  givenName: profile.givenName || undefined,
-                  familyName: profile.familyName || undefined,
-                  imageUrl: profile.imageUrl || undefined,
-                };
-                
+              console.log('[GoogleAuth] Built user object:', JSON.stringify(googleUser, null, 2));
+              
+              // If we have an access token, use it; otherwise we may need to use idToken
+              const tokenValue = accessToken || idToken;
+              
+              if (tokenValue) {
                 const googleTokens: GoogleAuthTokens = {
-                  accessToken: accessToken,
+                  accessToken: typeof accessToken === 'string' ? accessToken : (accessToken || idToken || ''),
                   refreshToken: undefined, // Not available in online mode
-                  idToken: idToken || undefined,
-                  expiresAt: onlineResult.accessToken?.expires 
-                    ? new Date(onlineResult.accessToken.expires).getTime() 
+                  idToken: typeof idToken === 'string' ? idToken : undefined,
+                  expiresAt: loginResult.accessToken?.expires 
+                    ? new Date(loginResult.accessToken.expires).getTime() 
                     : Date.now() + 3600000,
                 };
                 
+                console.log('[GoogleAuth] Setting user and tokens...');
                 setUser(googleUser);
                 setTokens(googleTokens);
                 await setSetting(STORAGE_KEYS.USER, googleUser);
                 await setSetting(STORAGE_KEYS.TOKENS, googleTokens);
+                
+                console.log('[GoogleAuth] Sign-in successful for:', googleUser.email);
+                setIsLoading(false);
                 
                 // Auto-restore data from cloud after login
                 if (googleTokens.accessToken) {
@@ -501,26 +525,35 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 }
                 
                 return true;
+              } else {
+                // No access token but we have profile - still sign in but without cloud sync
+                console.log('[GoogleAuth] No access token, signing in with profile only');
+                setUser(googleUser);
+                await setSetting(STORAGE_KEYS.USER, googleUser);
+                setIsLoading(false);
+                return true;
               }
             }
           }
           
-          console.error('[GoogleAuth] SocialLogin failed: Invalid result');
+          console.error('[GoogleAuth] SocialLogin failed: Could not extract user profile from result');
           setIsLoading(false);
           return false;
         } catch (pluginError: any) {
-          console.error('[GoogleAuth] SocialLogin plugin error:', pluginError);
+          console.error('[GoogleAuth] SocialLogin plugin error:', JSON.stringify(pluginError, null, 2));
           
           // Check if user cancelled
-          if (pluginError?.message?.includes('cancel') || pluginError?.code === 'USER_CANCELLED') {
+          const errorMessage = pluginError?.message || pluginError?.toString() || '';
+          if (errorMessage.toLowerCase().includes('cancel') || 
+              pluginError?.code === 'USER_CANCELLED' ||
+              pluginError?.code === '12501') { // Google Sign-In cancel code
             console.log('[GoogleAuth] User cancelled sign-in');
             setIsLoading(false);
             return false;
           }
           
           // For other errors on native, show error instead of falling back to browser
-          // Browser fallback causes the "Access blocked" error
-          console.error('[GoogleAuth] Native sign-in failed. Make sure MainActivity.java implements ModifiedMainActivityForSocialLoginPlugin');
+          console.error('[GoogleAuth] Native sign-in failed. Ensure MainActivity.java implements ModifiedMainActivityForSocialLoginPlugin and server_client_id is in strings.xml');
           setIsLoading(false);
           return false;
         }
