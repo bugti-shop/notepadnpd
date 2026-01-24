@@ -66,167 +66,194 @@ dependencies {
 
 ### Step 3: Create the Native Bridge
 
-Create `android/app/src/main/java/nota/npd/com/NativeAuthBridge.kt`:
+Create `android/app/src/main/java/nota/npd/com/NativeAuthBridge.java`:
 
-```kotlin
-package nota.npd.com
+```java
+package nota.npd.com;
 
-import android.app.Activity
-import android.content.Intent
-import android.util.Log
-import android.webkit.JavascriptInterface
-import android.webkit.WebView
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
-import com.google.android.gms.auth.api.signin.GoogleSignInClient
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
-import com.google.android.gms.common.api.Scope
-import org.json.JSONObject
+import android.app.Activity;
+import android.content.Intent;
+import android.util.Log;
+import android.webkit.JavascriptInterface;
+import android.webkit.WebView;
 
-class NativeAuthBridge(
-    private val activity: Activity,
-    private val webView: WebView
-) {
-    companion object {
-        private const val TAG = "NativeAuthBridge"
-        const val RC_SIGN_IN = 9001
-        
-        // Your Web Client ID (same as in the TypeScript code)
-        private const val WEB_CLIENT_ID = "52777395492-vnlk2hkr3pv15dtpgp2m51p7418vll90.apps.googleusercontent.com"
-    }
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.common.api.Scope;
+import com.google.android.gms.tasks.Task;
 
-    private var googleSignInClient: GoogleSignInClient
+import org.json.JSONException;
+import org.json.JSONObject;
 
-    init {
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(WEB_CLIENT_ID)
-            .requestServerAuthCode(WEB_CLIENT_ID)
-            .requestEmail()
-            .requestProfile()
-            .requestScopes(
-                Scope("https://www.googleapis.com/auth/drive.appdata"),
-                Scope("https://www.googleapis.com/auth/calendar.events"),
-                Scope("https://www.googleapis.com/auth/calendar.calendars")
-            )
-            .build()
+public class NativeAuthBridge {
+    private static final String TAG = "NativeAuthBridge";
+    public static final int RC_SIGN_IN = 9001;
+    
+    // Your Web Client ID (same as in the TypeScript code)
+    private static final String WEB_CLIENT_ID = "52777395492-vnlk2hkr3pv15dtpgp2m51p7418vll90.apps.googleusercontent.com";
 
-        googleSignInClient = GoogleSignIn.getClient(activity, gso)
+    private final Activity activity;
+    private final WebView webView;
+    private final GoogleSignInClient googleSignInClient;
+
+    public NativeAuthBridge(Activity activity, WebView webView) {
+        this.activity = activity;
+        this.webView = webView;
+
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(WEB_CLIENT_ID)
+                .requestServerAuthCode(WEB_CLIENT_ID)
+                .requestEmail()
+                .requestProfile()
+                .requestScopes(
+                        new Scope("https://www.googleapis.com/auth/drive.appdata"),
+                        new Scope("https://www.googleapis.com/auth/calendar.events"),
+                        new Scope("https://www.googleapis.com/auth/calendar.calendars")
+                )
+                .build();
+
+        googleSignInClient = GoogleSignIn.getClient(activity, gso);
     }
 
     @JavascriptInterface
-    fun signIn() {
-        Log.d(TAG, "signIn() called")
-        activity.runOnUiThread {
-            val signInIntent = googleSignInClient.signInIntent
-            activity.startActivityForResult(signInIntent, RC_SIGN_IN)
+    public void signIn() {
+        Log.d(TAG, "signIn() called");
+        activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Intent signInIntent = googleSignInClient.getSignInIntent();
+                activity.startActivityForResult(signInIntent, RC_SIGN_IN);
+            }
+        });
+    }
+
+    @JavascriptInterface
+    public void signOut() {
+        Log.d(TAG, "signOut() called");
+        googleSignInClient.signOut().addOnCompleteListener(task -> {
+            boolean success = task.isSuccessful();
+            Log.d(TAG, "signOut completed: " + success);
+            callJavaScript("window.onNativeSignOutResult && window.onNativeSignOutResult(" + success + ")");
+        });
+    }
+
+    @JavascriptInterface
+    public boolean isSignedIn() {
+        GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(activity);
+        return account != null && !account.isExpired();
+    }
+
+    @JavascriptInterface
+    public String getLastUser() {
+        GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(activity);
+        if (account != null) {
+            return accountToJson(account);
         }
-    }
-
-    @JavascriptInterface
-    fun signOut() {
-        Log.d(TAG, "signOut() called")
-        googleSignInClient.signOut().addOnCompleteListener { task ->
-            val success = task.isSuccessful
-            Log.d(TAG, "signOut completed: $success")
-            callJavaScript("window.onNativeSignOutResult && window.onNativeSignOutResult($success)")
-        }
-    }
-
-    @JavascriptInterface
-    fun isSignedIn(): Boolean {
-        val account = GoogleSignIn.getLastSignedInAccount(activity)
-        return account != null && !account.isExpired
-    }
-
-    @JavascriptInterface
-    fun getLastUser(): String? {
-        val account = GoogleSignIn.getLastSignedInAccount(activity)
-        return account?.let { accountToJson(it) }
+        return null;
     }
 
     // Called from MainActivity when sign-in activity returns
-    fun handleSignInResult(data: Intent?) {
+    public void handleSignInResult(Intent data) {
         try {
-            val task = GoogleSignIn.getSignedInAccountFromIntent(data)
-            val account = task.getResult(ApiException::class.java)
+            Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
+            GoogleSignInAccount account = task.getResult(ApiException.class);
             
-            Log.d(TAG, "Sign-in successful: ${account.email}")
+            Log.d(TAG, "Sign-in successful: " + account.getEmail());
             
             // Create result JSON
-            val userJson = accountToJson(account)
-            val resultJson = JSONObject().apply {
-                put("success", true)
-                put("user", JSONObject(userJson))
-                put("accessToken", "") // Will be exchanged from serverAuthCode
-                put("serverAuthCode", account.serverAuthCode ?: "")
+            String userJson = accountToJson(account);
+            JSONObject resultJson = new JSONObject();
+            try {
+                resultJson.put("success", true);
+                resultJson.put("user", new JSONObject(userJson));
+                resultJson.put("accessToken", ""); // Will be exchanged from serverAuthCode
+                resultJson.put("serverAuthCode", account.getServerAuthCode() != null ? account.getServerAuthCode() : "");
+            } catch (JSONException e) {
+                Log.e(TAG, "JSON error", e);
             }
             
-            callJavaScript("window.onNativeAuthResult && window.onNativeAuthResult(${resultJson})")
+            callJavaScript("window.onNativeAuthResult && window.onNativeAuthResult(" + resultJson.toString() + ")");
             
-        } catch (e: ApiException) {
-            Log.e(TAG, "Sign-in failed: ${e.statusCode}", e)
-            val errorJson = JSONObject().apply {
-                put("success", false)
-                put("error", "Sign-in failed: ${e.statusCode}")
+        } catch (ApiException e) {
+            Log.e(TAG, "Sign-in failed: " + e.getStatusCode(), e);
+            JSONObject errorJson = new JSONObject();
+            try {
+                errorJson.put("success", false);
+                errorJson.put("error", "Sign-in failed: " + e.getStatusCode());
+            } catch (JSONException jsonEx) {
+                Log.e(TAG, "JSON error", jsonEx);
             }
-            callJavaScript("window.onNativeAuthResult && window.onNativeAuthResult(${errorJson})")
+            callJavaScript("window.onNativeAuthResult && window.onNativeAuthResult(" + errorJson.toString() + ")");
         }
     }
 
-    private fun accountToJson(account: GoogleSignInAccount): String {
-        return JSONObject().apply {
-            put("id", account.id ?: "")
-            put("email", account.email ?: "")
-            put("displayName", account.displayName ?: "")
-            put("givenName", account.givenName ?: "")
-            put("familyName", account.familyName ?: "")
-            put("photoUrl", account.photoUrl?.toString() ?: "")
-            put("idToken", account.idToken ?: "")
-            put("serverAuthCode", account.serverAuthCode ?: "")
-        }.toString()
+    private String accountToJson(GoogleSignInAccount account) {
+        JSONObject json = new JSONObject();
+        try {
+            json.put("id", account.getId() != null ? account.getId() : "");
+            json.put("email", account.getEmail() != null ? account.getEmail() : "");
+            json.put("displayName", account.getDisplayName() != null ? account.getDisplayName() : "");
+            json.put("givenName", account.getGivenName() != null ? account.getGivenName() : "");
+            json.put("familyName", account.getFamilyName() != null ? account.getFamilyName() : "");
+            json.put("photoUrl", account.getPhotoUrl() != null ? account.getPhotoUrl().toString() : "");
+            json.put("idToken", account.getIdToken() != null ? account.getIdToken() : "");
+            json.put("serverAuthCode", account.getServerAuthCode() != null ? account.getServerAuthCode() : "");
+        } catch (JSONException e) {
+            Log.e(TAG, "JSON error", e);
+        }
+        return json.toString();
     }
 
-    private fun callJavaScript(script: String) {
-        activity.runOnUiThread {
-            webView.evaluateJavascript(script, null)
-        }
+    private void callJavaScript(final String script) {
+        activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                webView.evaluateJavascript(script, null);
+            }
+        });
     }
 }
 ```
 
 ### Step 4: Register the Bridge in MainActivity
 
-Modify `android/app/src/main/java/nota/npd/com/MainActivity.kt`:
+Modify `android/app/src/main/java/nota/npd/com/MainActivity.java`:
 
-```kotlin
-package nota.npd.com
+```java
+package nota.npd.com;
 
-import android.content.Intent
-import android.os.Bundle
-import android.webkit.WebView
-import com.getcapacitor.BridgeActivity
+import android.content.Intent;
+import android.os.Bundle;
+import android.webkit.WebView;
 
-class MainActivity : BridgeActivity() {
+import com.getcapacitor.BridgeActivity;
+
+public class MainActivity extends BridgeActivity {
     
-    private var nativeAuthBridge: NativeAuthBridge? = null
+    private NativeAuthBridge nativeAuthBridge;
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
         
         // Get the WebView from Capacitor bridge
-        bridge?.webView?.let { webView ->
+        WebView webView = getBridge().getWebView();
+        if (webView != null) {
             // Add JavaScript interface
-            nativeAuthBridge = NativeAuthBridge(this, webView)
-            webView.addJavascriptInterface(nativeAuthBridge!!, "NativeAuthBridge")
+            nativeAuthBridge = new NativeAuthBridge(this, webView);
+            webView.addJavascriptInterface(nativeAuthBridge, "NativeAuthBridge");
         }
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
         
-        if (requestCode == NativeAuthBridge.RC_SIGN_IN) {
-            nativeAuthBridge?.handleSignInResult(data)
+        if (requestCode == NativeAuthBridge.RC_SIGN_IN && nativeAuthBridge != null) {
+            nativeAuthBridge.handleSignInResult(data);
         }
     }
 }
