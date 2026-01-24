@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import Confetti from 'react-confetti';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, CheckSquare, Mic, Unlock, Bell, Crown, Loader2 } from 'lucide-react';
+import { FileText, CheckSquare, Unlock, Bell, Crown, Loader2 } from 'lucide-react';
 import Welcome from '@/components/Welcome';
 import featureHome from '@/assets/feature-home.png';
 import featureNotes from '@/assets/feature-notes.png';
@@ -10,12 +10,8 @@ import featureNotesTypes from '@/assets/feature-notes-types.png';
 import featureEditor from '@/assets/feature-editor.png';
 import featureSketch from '@/assets/feature-sketch.png';
 import featureFontStyling from '@/assets/feature-font-styling.png';
-import featureMindmap from '@/assets/feature-mindmap.png';
 import featureStickyNotes from '@/assets/feature-sticky-notes.png';
 import featureCodeEditor from '@/assets/feature-code-editor.png';
-import featureExpenseTable from '@/assets/feature-expense-table.png';
-import featureExpenseChart from '@/assets/feature-expense-chart.png';
-import featureExpenseBudget from '@/assets/feature-expense-budget.png';
 import featureThemeDark from '@/assets/feature-theme-dark.png';
 import featureThemeGreen from '@/assets/feature-theme-green.png';
 import featureThemeForest from '@/assets/feature-theme-forest.png';
@@ -41,7 +37,6 @@ import featureSwipeComplete from '@/assets/feature-swipe-complete.png';
 import featureSwipeDelete from '@/assets/feature-swipe-delete.png';
 import showcaseFolders from '@/assets/showcase-folders.png';
 import showcaseAvatars from '@/assets/showcase-avatars.png';
-import showcaseVoice from '@/assets/showcase-voice.png';
 import googleLogo from '@/assets/logo-google-drive.png';
 import { PRICING_DISPLAY } from '@/lib/billing';
 import { Capacitor } from '@capacitor/core';
@@ -74,17 +69,14 @@ export default function OnboardingFlow({
   const [adminError, setAdminError] = useState('');
   const [imagesLoaded, setImagesLoaded] = useState(false);
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right'>('left');
-  const [expenseView, setExpenseView] = useState<0 | 1 | 2>(0);
   const [themeView, setThemeView] = useState<number>(0);
   const [swipeActionView, setSwipeActionView] = useState<0 | 1>(0);
-  const [showcaseView, setShowcaseView] = useState<0 | 1 | 2>(0);
+  const [showcaseView, setShowcaseView] = useState<0 | 1>(0);
   const [offerings, setOfferings] = useState<any>(null);
   const [isLoadingOfferings, setIsLoadingOfferings] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const touchStartX = useRef<number>(0);
   const touchEndX = useRef<number>(0);
-  const expenseTouchStartX = useRef<number>(0);
-  const expenseTouchEndX = useRef<number>(0);
   const themeTouchStartX = useRef<number>(0);
   const themeTouchEndX = useRef<number>(0);
   const swipeActionTouchStartX = useRef<number>(0);
@@ -92,12 +84,6 @@ export default function OnboardingFlow({
   const showcaseTouchStartX = useRef<number>(0);
   const showcaseTouchEndX = useRef<number>(0);
 
-  // Expense showcase data
-  const expenseFeatures = [
-    { image: featureExpenseTable, title: t('onboarding.expense.trackEvery'), subtitle: t('onboarding.expense.trackEveryDesc') },
-    { image: featureExpenseChart, title: t('onboarding.expense.visualize'), subtitle: t('onboarding.expense.visualizeDesc') },
-    { image: featureExpenseBudget, title: t('onboarding.expense.setBudgets'), subtitle: t('onboarding.expense.setBudgetsDesc') },
-  ];
 
   // Theme showcase data
   const themeFeatures = [
@@ -110,7 +96,7 @@ export default function OnboardingFlow({
 
   // Preload all images immediately with high priority for instant rendering
   useEffect(() => {
-    const imagesToPreload = [featureHome, featureNotes, featureNotesTypes, featureEditor, featureSketch, featureFontStyling, featureMindmap, featureStickyNotes, featureCodeEditor, featureExpenseTable, featureExpenseChart, featureExpenseBudget, featureThemeDark, featureThemeGreen, featureThemeForest, featureThemeBrown, featureThemeLight, featureTables, featureMedia, featureFolders, featureTaskInput, featureTaskList, featurePriority, featureOptions, featureDragDrop, featurePriorityFolders, featureCustomActions, featureSubtasksTracking, featureCompletedTasks, featureDateTime, featureBatchActions, featureMultipleTasks, featureProductivityTools, featureSwipeComplete, featureSwipeDelete, showcaseFolders, showcaseAvatars, showcaseVoice];
+    const imagesToPreload = [featureHome, featureNotes, featureNotesTypes, featureEditor, featureSketch, featureFontStyling, featureStickyNotes, featureCodeEditor, featureThemeDark, featureThemeGreen, featureThemeForest, featureThemeBrown, featureThemeLight, featureTables, featureMedia, featureFolders, featureTaskInput, featureTaskList, featurePriority, featureOptions, featureDragDrop, featurePriorityFolders, featureCustomActions, featureSubtasksTracking, featureCompletedTasks, featureDateTime, featureBatchActions, featureMultipleTasks, featureProductivityTools, featureSwipeComplete, featureSwipeDelete, showcaseFolders, showcaseAvatars];
     
     // Use Promise.all for parallel loading
     const loadPromises = imagesToPreload.map(src => {
@@ -139,10 +125,6 @@ export default function OnboardingFlow({
     id: 'tasks',
     label: t('onboarding.goals.tasks'),
     icon: CheckSquare
-  }, {
-    id: 'voice',
-    label: t('onboarding.goals.voice'),
-    icon: Mic
   }];
 
   const sources = [{
@@ -171,14 +153,13 @@ export default function OnboardingFlow({
     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/LinkedIn_icon.svg/2048px-LinkedIn_icon.svg.png'
   }];
 
-  // Steps: 1 (goal) -> 2-15 (note features) -> 16 (task input) -> 17 (showcase) -> 18-30 (task features) -> 31 (testimonials) -> 32 (source) -> 33 (google sign in) -> 34 (loading)
-  const totalSteps = 34;
+  // Steps: 1 (goal) -> 2-13 (note features) -> 14 (task input) -> 15 (showcase) -> 16-28 (task features) -> 29 (testimonials) -> 30 (source) -> 31 (google sign in) -> 32 (loading)
+  const totalSteps = 32;
 
   // Showcase features data
   const showcaseFeatures = [
     { image: showcaseFolders, title: t('onboarding.showcase.organizeFolders'), subtitle: t('onboarding.showcase.organizeFoldersDesc') },
     { image: showcaseAvatars, title: t('onboarding.showcase.assignAnyone'), subtitle: t('onboarding.showcase.assignAnyoneDesc') },
-    { image: showcaseVoice, title: t('onboarding.showcase.voicePowered'), subtitle: t('onboarding.showcase.voicePoweredDesc') },
   ];
 
   // Fetch RevenueCat offerings when paywall is about to show
@@ -229,7 +210,7 @@ export default function OnboardingFlow({
   }, [step, offerings, fetchOfferings]);
 
   useEffect(() => {
-    if (step === 34) {
+    if (step === 32) {
       const timer = setInterval(() => {
         setProgress(prev => {
           if (prev >= 100) {
@@ -250,7 +231,7 @@ export default function OnboardingFlow({
 
   const handleContinue = () => {
     triggerHaptic('heavy');
-    if (step < 34) {
+    if (step < 32) {
       setSwipeDirection('left');
       setStep(step + 1);
     }
@@ -321,36 +302,6 @@ export default function OnboardingFlow({
     touchEndX.current = 0;
   };
 
-  // Expense swipe gesture handlers
-  const handleExpenseTouchStart = (e: React.TouchEvent) => {
-    e.stopPropagation();
-    expenseTouchStartX.current = e.touches[0].clientX;
-  };
-
-  const handleExpenseTouchMove = (e: React.TouchEvent) => {
-    e.stopPropagation();
-    expenseTouchEndX.current = e.touches[0].clientX;
-  };
-
-  const handleExpenseTouchEnd = (e: React.TouchEvent) => {
-    e.stopPropagation();
-    const swipeThreshold = 50;
-    const diff = expenseTouchStartX.current - expenseTouchEndX.current;
-    
-    if (Math.abs(diff) > swipeThreshold) {
-      if (diff > 0 && expenseView < 2) {
-        // Swiped left - next expense view
-        triggerHaptic('light');
-        setExpenseView((expenseView + 1) as 0 | 1 | 2);
-      } else if (diff < 0 && expenseView > 0) {
-        // Swiped right - previous expense view
-        triggerHaptic('light');
-        setExpenseView((expenseView - 1) as 0 | 1 | 2);
-      }
-    }
-    expenseTouchStartX.current = 0;
-    expenseTouchEndX.current = 0;
-  };
 
   // Theme swipe gesture handlers
   const handleThemeTouchStart = (e: React.TouchEvent) => {
@@ -431,14 +382,14 @@ export default function OnboardingFlow({
     const diff = showcaseTouchStartX.current - showcaseTouchEndX.current;
     
     if (Math.abs(diff) > swipeThreshold) {
-      if (diff > 0 && showcaseView < 2) {
+      if (diff > 0 && showcaseView < 1) {
         // Swiped left - next showcase view
         triggerHaptic('light');
-        setShowcaseView((showcaseView + 1) as 0 | 1 | 2);
+        setShowcaseView(1);
       } else if (diff < 0 && showcaseView > 0) {
         // Swiped right - previous showcase view
         triggerHaptic('light');
-        setShowcaseView((showcaseView - 1) as 0 | 1 | 2);
+        setShowcaseView(0);
       }
     }
     showcaseTouchStartX.current = 0;
@@ -753,7 +704,7 @@ export default function OnboardingFlow({
 
       <div>
         <div className="flex items-center gap-4">
-          {step >= 1 && step !== 22 && (
+          {step >= 1 && step !== 20 && (
             <button onClick={handleBack} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                 <path d="M15 18L9 12L15 6" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -992,29 +943,6 @@ export default function OnboardingFlow({
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
             >
-              <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('onboarding.features.mapThoughts')}</h1>
-              <p className="text-gray-500 text-sm mb-3">{t('onboarding.features.mapThoughtsDesc')}</p>
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent rounded-2xl blur-xl opacity-50"></div>
-                <img src={featureMindmap} alt={t('onboarding.features.mapThoughts')} loading="eager" decoding="async" className="w-[240px] h-auto object-contain relative z-10 rounded-2xl shadow-lg" />
-              </div>
-            </motion.section>
-          )}
-
-          {step === 11 && (
-            <motion.section 
-              key="step11"
-              custom={swipeDirection}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.3, ease: "easeOut" }}
-              className="mt-6 text-center flex flex-col items-center relative"
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-            >
               <AnimatePresence mode="wait">
                 <motion.div
                   key={themeView}
@@ -1084,95 +1012,11 @@ export default function OnboardingFlow({
               </div>
             </motion.section>
           )}
-
-          {step === 12 && (
-            <motion.section 
-              key="step12"
-              custom={swipeDirection}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.3, ease: "easeOut" }}
-              className="mt-6 text-center flex flex-col items-center relative"
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-            >
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={expenseView}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                  className="text-center"
-                >
-                  <h1 className="text-2xl font-bold text-gray-900 mb-1">{expenseFeatures[expenseView].title}</h1>
-                  <p className="text-gray-500 text-sm mb-3">{expenseFeatures[expenseView].subtitle}</p>
-                </motion.div>
-              </AnimatePresence>
-              
-              {/* Toggle Switcher */}
-              <div 
-                className="flex gap-2 mb-4 bg-gray-100 p-1 rounded-full"
-                onTouchStart={(e) => e.stopPropagation()}
-                onTouchMove={(e) => e.stopPropagation()}
-                onTouchEnd={(e) => e.stopPropagation()}
-              >
-                {[0, 1, 2].map((idx) => (
-                  <button
-                    key={idx}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      triggerHaptic('light');
-                      setExpenseView(idx as 0 | 1 | 2);
-                    }}
-                    onTouchEnd={(e) => e.stopPropagation()}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
-                      expenseView === idx
-                        ? 'bg-primary text-white shadow-md'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    {idx + 1}
-                  </button>
-                ))}
-              </div>
-              
-              <div
-                onTouchStart={handleExpenseTouchStart}
-                onTouchMove={handleExpenseTouchMove}
-                onTouchEnd={handleExpenseTouchEnd}
-                className="touch-pan-y"
-              >
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={expenseView}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.25 }}
-                    className="relative"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent rounded-2xl blur-xl opacity-50"></div>
-                    <img 
-                      src={expenseFeatures[expenseView].image} 
-                      alt={expenseFeatures[expenseView].title} 
-                      loading="eager" 
-                      decoding="async" 
-                      className="w-[240px] h-auto object-contain relative z-10 rounded-2xl shadow-lg pointer-events-none" 
-                    />
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-            </motion.section>
-          )}
         </AnimatePresence>
 
-        {step === 13 && (
+        {step === 11 && (
           <motion.section 
-            key="step13"
+            key="step11"
             custom={swipeDirection}
             variants={slideVariants}
             initial="enter"
@@ -1193,9 +1037,9 @@ export default function OnboardingFlow({
           </motion.section>
         )}
 
-        {step === 14 && (
+        {step === 12 && (
           <motion.section 
-            key="step14"
+            key="step12"
             custom={swipeDirection}
             variants={slideVariants}
             initial="enter"
@@ -1216,9 +1060,9 @@ export default function OnboardingFlow({
           </motion.section>
         )}
 
-        {step === 15 && (
+        {step === 13 && (
           <motion.section 
-            key="step15"
+            key="step13"
             custom={swipeDirection}
             variants={slideVariants}
             initial="enter"
@@ -1239,9 +1083,9 @@ export default function OnboardingFlow({
           </motion.section>
         )}
 
-        {step === 16 && (
+        {step === 14 && (
           <motion.section 
-            key="step16"
+            key="step14"
             custom={swipeDirection}
             variants={slideVariants}
             initial="enter"
@@ -1262,9 +1106,9 @@ export default function OnboardingFlow({
           </motion.section>
         )}
 
-        {step === 17 && (
+        {step === 15 && (
           <motion.section 
-            key="step17-showcase"
+            key="step15-showcase"
             custom={swipeDirection}
             variants={slideVariants}
             initial="enter"
@@ -1305,13 +1149,6 @@ export default function OnboardingFlow({
               >
                 {t('onboarding.showcase.avatars')}
               </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); triggerHaptic('light'); setShowcaseView(2); }}
-                onTouchEnd={(e) => e.stopPropagation()}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${showcaseView === 2 ? 'bg-primary text-primary-foreground' : 'bg-gray-100 text-gray-600'}`}
-              >
-                {t('onboarding.showcase.voice')}
-              </button>
             </div>
             
             <div 
@@ -1339,9 +1176,9 @@ export default function OnboardingFlow({
           </motion.section>
         )}
 
-        {step === 18 && (
+        {step === 16 && (
           <motion.section 
-            key="step18"
+            key="step16"
             custom={swipeDirection}
             variants={slideVariants}
             initial="enter"
@@ -1362,9 +1199,9 @@ export default function OnboardingFlow({
           </motion.section>
         )}
 
-        {step === 19 && (
+        {step === 17 && (
           <motion.section 
-            key="step19"
+            key="step17"
             custom={swipeDirection}
             variants={slideVariants}
             initial="enter"
@@ -1385,9 +1222,9 @@ export default function OnboardingFlow({
           </motion.section>
         )}
 
-        {step === 20 && (
+        {step === 18 && (
           <motion.section 
-            key="step20"
+            key="step18"
             custom={swipeDirection}
             variants={slideVariants}
             initial="enter"
@@ -1408,9 +1245,9 @@ export default function OnboardingFlow({
           </motion.section>
         )}
 
-        {step === 21 && (
+        {step === 19 && (
           <motion.section 
-            key="step21"
+            key="step19"
             custom={swipeDirection}
             variants={slideVariants}
             initial="enter"
@@ -1431,9 +1268,9 @@ export default function OnboardingFlow({
           </motion.section>
         )}
 
-        {step === 22 && (
+        {step === 20 && (
           <motion.section 
-            key="step22"
+            key="step20"
             custom={swipeDirection}
             variants={slideVariants}
             initial="enter"
@@ -1454,9 +1291,9 @@ export default function OnboardingFlow({
           </motion.section>
         )}
 
-        {step === 23 && (
+        {step === 21 && (
           <motion.section 
-            key="step23"
+            key="step21"
             custom={swipeDirection}
             variants={slideVariants}
             initial="enter"
@@ -1477,9 +1314,9 @@ export default function OnboardingFlow({
           </motion.section>
         )}
 
-        {step === 24 && (
+        {step === 22 && (
           <motion.section 
-            key="step24"
+            key="step22"
             custom={swipeDirection}
             variants={slideVariants}
             initial="enter"
@@ -1500,9 +1337,9 @@ export default function OnboardingFlow({
           </motion.section>
         )}
 
-        {step === 25 && (
+        {step === 23 && (
           <motion.section 
-            key="step25"
+            key="step23"
             custom={swipeDirection}
             variants={slideVariants}
             initial="enter"
@@ -1523,9 +1360,9 @@ export default function OnboardingFlow({
           </motion.section>
         )}
 
-        {step === 26 && (
+        {step === 24 && (
           <motion.section 
-            key="step26"
+            key="step24"
             custom={swipeDirection}
             variants={slideVariants}
             initial="enter"
@@ -1546,9 +1383,9 @@ export default function OnboardingFlow({
           </motion.section>
         )}
 
-        {step === 27 && (
+        {step === 25 && (
           <motion.section 
-            key="step27"
+            key="step25"
             custom={swipeDirection}
             variants={slideVariants}
             initial="enter"
@@ -1569,9 +1406,9 @@ export default function OnboardingFlow({
           </motion.section>
         )}
 
-        {step === 28 && (
+        {step === 26 && (
           <motion.section 
-            key="step28"
+            key="step26"
             custom={swipeDirection}
             variants={slideVariants}
             initial="enter"
@@ -1592,9 +1429,9 @@ export default function OnboardingFlow({
           </motion.section>
         )}
 
-        {step === 29 && (
+        {step === 27 && (
           <motion.section 
-            key="step29"
+            key="step27"
             custom={swipeDirection}
             variants={slideVariants}
             initial="enter"
@@ -1615,9 +1452,9 @@ export default function OnboardingFlow({
           </motion.section>
         )}
 
-        {step === 30 && (
+        {step === 28 && (
           <motion.section 
-            key="step30"
+            key="step28"
             custom={swipeDirection}
             variants={slideVariants}
             initial="enter"
@@ -1675,9 +1512,9 @@ export default function OnboardingFlow({
           </motion.section>
         )}
 
-        {step === 31 && (
+        {step === 29 && (
           <motion.section 
-            key="step31"
+            key="step29"
             custom={swipeDirection}
             variants={slideVariants}
             initial="enter"
@@ -1741,7 +1578,7 @@ export default function OnboardingFlow({
           </motion.section>
         )}
 
-        {step === 32 && (
+        {step === 30 && (
           <section className="mt-8">
             <h1 className="text-2xl font-semibold text-gray-900">{t('onboarding.howFoundUs')}</h1>
             <p className="text-gray-400 mt-2">{t('onboarding.selectPlatform')}</p>
@@ -1757,9 +1594,9 @@ export default function OnboardingFlow({
           </section>
         )}
 
-        {step === 33 && (
+        {step === 31 && (
           <motion.section 
-            key="step33"
+            key="step31"
             custom={swipeDirection}
             variants={slideVariants}
             initial="enter"
@@ -1836,7 +1673,7 @@ export default function OnboardingFlow({
           </motion.section>
         )}
 
-        {step === 34 && (
+        {step === 32 && (
           <section className="mt-20 text-center">
             <h1 className="text-5xl font-bold mb-4">{progress}%</h1>
             <p className="text-lg font-semibold mb-4">{t('onboarding.loading.settingUp')}</p>
@@ -1870,7 +1707,7 @@ export default function OnboardingFlow({
       </div>
 
       <div className="mt-8 space-y-4">
-        {step !== 33 && step !== 34 && (
+        {step !== 31 && step !== 32 && (
           <button
             onClick={handleContinue}
             className="w-full btn-duo"
