@@ -933,7 +933,7 @@
       "subtitle": "See why people love NPD",
       "review1": "Finally an app that does notes AND tasks perfectly. Game changer for my productivity!",
       "reviewer1": "— Sarah K., Designer",
-      "review2": "The voice recording feature is incredible. I capture ideas on the go and never forget anything.",
+      "review2": "The folder organization is incredible. I keep everything sorted and never lose a note!",
       "reviewer2": "— Ahmed R., Entrepreneur",
       "review3": "Best note app I've used. The themes and organization features are beautiful!",
       "reviewer3": "— Maria L., Student"
@@ -941,7 +941,7 @@
     "loading": {
       "settingUp": "Setting up your workspace",
       "preparingFeatures": "Preparing your features",
-      "notesVoiceMemos": "Notes & Voice Memos",
+      "notesVoiceMemos": "Notes & Sketches",
       "tasksReminders": "Tasks & Reminders",
       "foldersOrganization": "Folders & Organization",
       "calendarView": "Calendar View",
