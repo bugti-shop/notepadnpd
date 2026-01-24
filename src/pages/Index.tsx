@@ -1174,16 +1174,6 @@ const Index = () => {
               <FileCode className="h-4 w-4 text-orange-500" />
               {t('notes.noteTypes.code')}
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('mindmap'); }} className="gap-2">
-              <GitBranch className="h-4 w-4 text-pink-500" />
-              {t('notes.noteTypes.mindMap')}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('expense'); }} className="gap-2">
-              <Receipt className="h-4 w-4 text-teal-500" />
-              {t('notes.noteTypes.expense')}
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )}

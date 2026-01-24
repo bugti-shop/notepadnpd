@@ -77,7 +77,6 @@ export const NoteCard = ({ note, onEdit, onDelete, onArchive, onTogglePin, onTog
   const isSticky = note.type === 'sticky';
   const isLined = note.type === 'lined';
   const isSketch = note.type === 'sketch';
-  const isMindMap = note.type === 'mindmap';
   const isCode = note.type === 'code';
   const SWIPE_THRESHOLD = 80;
 
@@ -213,8 +212,6 @@ export const NoteCard = ({ note, onEdit, onDelete, onArchive, onTogglePin, onTog
         return { icon: Pen, label: 'Sketch' };
       case 'code':
         return { icon: FileCode, label: 'Code' };
-      case 'mindmap':
-        return { icon: GitBranch, label: 'Mind Map' };
       default:
         return { icon: FileText, label: 'Text' };
     }

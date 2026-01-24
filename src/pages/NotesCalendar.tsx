@@ -24,7 +24,7 @@ const NotesCalendar = () => {
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [defaultType, setDefaultType] = useState<NoteType>('regular');
   const [selectedNoteTypes, setSelectedNoteTypes] = useState<NoteType[]>([
-    'sticky', 'lined', 'regular', 'sketch', 'code', 'mindmap'
+    'sticky', 'lined', 'regular', 'sketch', 'code'
   ]);
   const [folders, setFolders] = useState<Folder[]>([]);
   
@@ -117,8 +117,6 @@ const NotesCalendar = () => {
     regular: { label: t('notesMenu.regular'), icon: FileEdit },
     sketch: { label: t('notesMenu.sketch'), icon: Pen },
     code: { label: t('notesMenu.code'), icon: FileCode },
-    mindmap: { label: t('notesMenu.mindMap'), icon: GitBranch },
-    expense: { label: t('notesMenu.expense'), icon: FileText },
   };
 
   const handleDeleteNote = async (noteId: string) => {
@@ -234,10 +232,6 @@ const NotesCalendar = () => {
           <DropdownMenuItem onClick={() => handleCreateNote('code')} className="gap-2">
             <FileCode className="h-4 w-4" />
             {t('notesMenu.codeNotes')}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleCreateNote('mindmap')} className="gap-2">
-            <GitBranch className="h-4 w-4" />
-            {t('notesMenu.mindMap')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

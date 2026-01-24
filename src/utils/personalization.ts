@@ -54,11 +54,11 @@ export const getSuggestedNoteTypes = (answers: OnboardingAnswers): NoteType[] =>
   const types: NoteType[] = [];
 
   if (answers[0] === 'work') {
-    types.push('mindmap', 'regular');
+    types.push('regular', 'code');
   } else if (answers[0] === 'journal') {
     types.push('lined', 'regular');
   } else if (answers[0] === 'study') {
-    types.push('mindmap', 'code');
+    types.push('regular', 'code');
   } else if (answers[0] === 'creative') {
     types.push('sketch', 'sticky');
   }
@@ -68,7 +68,7 @@ export const getSuggestedNoteTypes = (answers: OnboardingAnswers): NoteType[] =>
   } else if (answers[2] === 'voice' && !types.includes('regular')) {
     types.push('regular');
   } else if (answers[2] === 'sketches') {
-    types.push('sketch', 'mindmap');
+    types.push('sketch');
   }
 
   return [...new Set(types)].slice(0, 3);

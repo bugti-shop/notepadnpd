@@ -287,13 +287,6 @@ export const FolderManager = ({
                   <Palette className="h-4 w-4 mr-2" />
                   {t('notesMenu.sketchNotes')}
                 </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => onFilterByTypeChange('expense')}
-                  className={cn(filterByType === 'expense' && "bg-accent")}
-                >
-                  <Receipt className="h-4 w-4 mr-2" />
-                  {t('notesMenu.expenseTracker')}
-                </DropdownMenuItem>
               </>
             )}
             

@@ -9,12 +9,9 @@ import { Label } from '@/components/ui/label';
 import { RichTextEditor } from './RichTextEditor';
 import { getTableStyles, TableStyle } from './TableEditor';
 import { FindReplacePage } from './FindReplacePage';
-import { VoiceRecorder } from './VoiceRecorder';
 import { SketchEditor } from './SketchEditor';
 import { VirtualizedCodeEditor } from './VirtualizedCodeEditor';
-import { MindMapEditor } from './MindMapEditor';
 import { TemplateSelector } from './TemplateSelector';
-import { ExpenseTrackerEditor } from './ExpenseTrackerEditor';
 import { NoteVersionHistorySheet } from './NoteVersionHistorySheet';
 import { NoteLinkingSheet } from './NoteLinkingSheet';
 import { NoteTableOfContents, injectHeadingIds } from './NoteTableOfContents';
@@ -630,8 +627,8 @@ export const NoteEditor = ({ note, isOpen, onClose, onSave, defaultType = 'regul
       className={cn("fixed inset-0 z-50 flex flex-col")}
       style={{ backgroundColor: getEditorBackgroundColor() }}
     >
-      {/* Top Header - Hide for expense notes */}
-      {noteType !== 'expense' && (
+      {/* Top Header */}
+      {true && (
         <div
           className="flex justify-between items-center px-4 py-3 border-b"
           style={{ backgroundColor: getEditorBackgroundColor(), borderColor: 'rgba(0,0,0,0.1)' }}
@@ -887,18 +884,6 @@ export const NoteEditor = ({ note, isOpen, onClose, onSave, defaultType = 'regul
                 </div>
                 <DropdownMenuSeparator />
                 
-                {/* Voice Recorder */}
-                <div className="px-2 py-1.5">
-                  <VoiceRecorder
-                    recordings={voiceRecordings}
-                    onRecordingAdd={handleRecordingAdd}
-                    onRecordingDelete={handleRecordingDelete}
-                    onInsertAtCursor={handleInsertAudioAtCursor}
-                    compact={true}
-                  />
-                </div>
-                <DropdownMenuSeparator />
-                
                 {/* Folder Selection */}
                 <div className="px-2 py-1.5 text-sm font-semibold flex items-center gap-2">
                   <FolderIcon className="h-4 w-4" />
@@ -1008,15 +993,7 @@ export const NoteEditor = ({ note, isOpen, onClose, onSave, defaultType = 'regul
       {/* Full Page Content Editor */}
       <div className="flex-1 min-h-0 overflow-hidden">
         <ErrorBoundary>
-          {noteType === 'expense' ? (
-            <ExpenseTrackerEditor
-              content={content}
-              onChange={setContent}
-              title={title}
-              onTitleChange={setTitle}
-              onClose={handleClose}
-            />
-          ) : noteType === 'code' ? (
+          {noteType === 'code' ? (
             <VirtualizedCodeEditor
               code={codeContent}
               onChange={setCodeContent}
@@ -1025,13 +1002,6 @@ export const NoteEditor = ({ note, isOpen, onClose, onSave, defaultType = 'regul
               title={title}
               onTitleChange={setTitle}
               onClose={handleClose}
-            />
-          ) : noteType === 'mindmap' ? (
-            <MindMapEditor
-              content={content}
-              onChange={setContent}
-              title={title}
-              onTitleChange={setTitle}
             />
           ) : noteType === 'sketch' ? (
             <SketchEditor content={content} onChange={setContent} />
