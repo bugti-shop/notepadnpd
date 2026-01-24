@@ -506,12 +506,23 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           }
           
           console.error('[GoogleAuth] SocialLogin failed: Invalid result');
+          setIsLoading(false);
           return false;
-        } catch (pluginError) {
+        } catch (pluginError: any) {
           console.error('[GoogleAuth] SocialLogin plugin error:', pluginError);
           
-          // Fallback to browser-based OAuth if plugin fails
-          console.log('[GoogleAuth] Falling back to browser OAuth...');
+          // Check if user cancelled
+          if (pluginError?.message?.includes('cancel') || pluginError?.code === 'USER_CANCELLED') {
+            console.log('[GoogleAuth] User cancelled sign-in');
+            setIsLoading(false);
+            return false;
+          }
+          
+          // For other errors on native, show error instead of falling back to browser
+          // Browser fallback causes the "Access blocked" error
+          console.error('[GoogleAuth] Native sign-in failed. Make sure MainActivity.java implements ModifiedMainActivityForSocialLoginPlugin');
+          setIsLoading(false);
+          return false;
         }
       }
       
