@@ -2,17 +2,11 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { App } from '@capacitor/app';
+import { SocialLogin } from '@capgo/capacitor-social-login';
 import { getSetting, setSetting, removeSetting } from '@/utils/settingsStorage';
 import { getGoogleDriveSyncManager, startAutoSync, stopAutoSync, setupChangeListeners } from '@/utils/googleDriveSync';
 import { startCalendarAutoSync, stopCalendarAutoSync } from '@/utils/calendarBidirectionalSync';
 import { getCalendarSyncSettings } from '@/utils/googleCalendarSync';
-import { 
-  isNativeAuthAvailable, 
-  nativeSignIn, 
-  nativeSignOut, 
-  getNativeUser,
-  NativeAuthResult 
-} from '@/plugins/NativeAuthBridge';
 
 // Google Auth types
 export interface GoogleUser {
@@ -54,7 +48,7 @@ const SCOPES = [
   'https://www.googleapis.com/auth/drive.appdata',
   'https://www.googleapis.com/auth/calendar.events',
   'https://www.googleapis.com/auth/calendar.calendars',
-].join(' ');
+];
 
 const STORAGE_KEYS = {
   USER: 'google_user',
@@ -85,6 +79,27 @@ const generatePKCE = async () => {
   return { verifier, challenge };
 };
 
+// Initialize the SocialLogin plugin
+let socialLoginInitialized = false;
+const initializeSocialLogin = async () => {
+  if (socialLoginInitialized) return;
+  
+  try {
+    if (Capacitor.isNativePlatform()) {
+      await SocialLogin.initialize({
+        google: {
+          webClientId: GOOGLE_WEB_CLIENT_ID,
+          mode: 'online',
+        },
+      });
+      socialLoginInitialized = true;
+      console.log('[GoogleAuth] SocialLogin plugin initialized');
+    }
+  } catch (error) {
+    console.error('[GoogleAuth] Failed to initialize SocialLogin:', error);
+  }
+};
+
 export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<GoogleUser | null>(null);
   const [tokens, setTokens] = useState<GoogleAuthTokens | null>(null);
@@ -92,6 +107,11 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [isRestoring, setIsRestoring] = useState(false);
   const changeListenerCleanup = useRef<(() => void) | null>(null);
   const signInResolver = useRef<((value: boolean) => void) | null>(null);
+
+  // Initialize plugin on mount
+  useEffect(() => {
+    initializeSocialLogin();
+  }, []);
 
   // Refresh access token
   const refreshAccessToken = useCallback(async (refreshToken: string): Promise<boolean> => {
@@ -375,14 +395,13 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
     };
 
-    // Set up deep link listener for native platforms
+    // Set up deep link listener for native platforms (fallback for web OAuth)
     const setupDeepLinkListener = async () => {
       if (Capacitor.isNativePlatform()) {
         appUrlListener = await App.addListener('appUrlOpen', async (event) => {
           console.log('[GoogleAuth] Deep link received:', event.url);
           
-          // Check if this is an OAuth callback - handle both authorization code flow (code) 
-          // and implicit flow (access_token) as well as errors
+          // Check if this is an OAuth callback
           const isOAuthCallback = event.url.includes('oauth/callback') || 
                                    event.url.includes('code=') || 
                                    event.url.includes('access_token') || 
@@ -424,48 +443,79 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
   }, [startBackgroundSync, refreshAccessToken, handleOAuthCallback]);
 
-   const signIn = useCallback(async (): Promise<boolean> => {
+  const signIn = useCallback(async (): Promise<boolean> => {
     setIsLoading(true);
     try {
-      // Check if native auth bridge is available (custom Android implementation)
-      if (isNativeAuthAvailable()) {
-        console.log('[GoogleAuth] Using native auth bridge...');
-        const result: NativeAuthResult = await nativeSignIn();
+      // Use Capgo SocialLogin plugin for native platforms
+      if (Capacitor.isNativePlatform()) {
+        console.log('[GoogleAuth] Using Capgo SocialLogin plugin...');
         
-        if (result.success && result.user) {
-          const googleUser: GoogleUser = {
-            id: result.user.id,
-            email: result.user.email,
-            name: result.user.displayName,
-            givenName: result.user.givenName,
-            familyName: result.user.familyName,
-            imageUrl: result.user.photoUrl,
-          };
+        try {
+          // Ensure plugin is initialized
+          await initializeSocialLogin();
           
-          const googleTokens: GoogleAuthTokens = {
-            accessToken: result.accessToken || '',
-            refreshToken: result.refreshToken,
-            idToken: result.user.idToken,
-            expiresAt: result.expiresIn ? Date.now() + (result.expiresIn * 1000) : undefined,
-          };
+          const result = await SocialLogin.login({
+            provider: 'google',
+            options: {
+              scopes: SCOPES,
+            },
+          });
           
-          setUser(googleUser);
-          setTokens(googleTokens);
-          await setSetting(STORAGE_KEYS.USER, googleUser);
-          await setSetting(STORAGE_KEYS.TOKENS, googleTokens);
+          console.log('[GoogleAuth] SocialLogin result:', result);
           
-          // Auto-restore data from cloud after login
-          if (googleTokens.accessToken) {
-            restoreFromCloud(googleTokens.accessToken);
+          if (result?.provider === 'google' && result.result) {
+            // Check if it's an online response (has profile)
+            if (result.result.responseType === 'online') {
+              const onlineResult = result.result;
+              const profile = onlineResult.profile;
+              const accessToken = onlineResult.accessToken?.token;
+              const idToken = onlineResult.idToken;
+              
+              if (profile && accessToken) {
+                const googleUser: GoogleUser = {
+                  id: profile.id || '',
+                  email: profile.email || '',
+                  name: profile.name || '',
+                  givenName: profile.givenName || undefined,
+                  familyName: profile.familyName || undefined,
+                  imageUrl: profile.imageUrl || undefined,
+                };
+                
+                const googleTokens: GoogleAuthTokens = {
+                  accessToken: accessToken,
+                  refreshToken: undefined, // Not available in online mode
+                  idToken: idToken || undefined,
+                  expiresAt: onlineResult.accessToken?.expires 
+                    ? new Date(onlineResult.accessToken.expires).getTime() 
+                    : Date.now() + 3600000,
+                };
+                
+                setUser(googleUser);
+                setTokens(googleTokens);
+                await setSetting(STORAGE_KEYS.USER, googleUser);
+                await setSetting(STORAGE_KEYS.TOKENS, googleTokens);
+                
+                // Auto-restore data from cloud after login
+                if (googleTokens.accessToken) {
+                  restoreFromCloud(googleTokens.accessToken);
+                }
+                
+                return true;
+              }
+            }
           }
           
-          return true;
-        } else {
-          console.error('[GoogleAuth] Native sign-in failed:', result.error);
+          console.error('[GoogleAuth] SocialLogin failed: Invalid result');
           return false;
+        } catch (pluginError) {
+          console.error('[GoogleAuth] SocialLogin plugin error:', pluginError);
+          
+          // Fallback to browser-based OAuth if plugin fails
+          console.log('[GoogleAuth] Falling back to browser OAuth...');
         }
       }
       
+      // Web OAuth flow or fallback for native
       const state = Math.random().toString(36).substring(7);
       sessionStorage.setItem('google_oauth_state', state);
       
@@ -481,20 +531,18 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         authUrl.searchParams.set('client_id', GOOGLE_WEB_CLIENT_ID);
         authUrl.searchParams.set('redirect_uri', redirectUri);
         authUrl.searchParams.set('response_type', 'code');
-        authUrl.searchParams.set('scope', SCOPES);
+        authUrl.searchParams.set('scope', SCOPES.join(' '));
         authUrl.searchParams.set('state', state);
         authUrl.searchParams.set('code_challenge', challenge);
         authUrl.searchParams.set('code_challenge_method', 'S256');
         authUrl.searchParams.set('access_type', 'offline');
         authUrl.searchParams.set('prompt', 'consent');
 
-        // Open OAuth URL in in-app browser
-        // Use system browser for better compatibility with OAuth flows on Android
         console.log('[GoogleAuth] Opening OAuth URL in browser (fallback)...');
         await Browser.open({ 
           url: authUrl.toString(),
-          presentationStyle: 'popover', // iOS
-          windowName: '_blank', // Android Chrome Custom Tabs
+          presentationStyle: 'popover',
+          windowName: '_blank',
         });
         
         // Return a promise that resolves when we get the deep link callback
@@ -517,7 +565,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         authUrl.searchParams.set('client_id', GOOGLE_WEB_CLIENT_ID);
         authUrl.searchParams.set('redirect_uri', redirectUri);
         authUrl.searchParams.set('response_type', 'token');
-        authUrl.searchParams.set('scope', SCOPES);
+        authUrl.searchParams.set('scope', SCOPES.join(' '));
         authUrl.searchParams.set('state', state);
         authUrl.searchParams.set('prompt', 'select_account');
 
@@ -603,10 +651,14 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         changeListenerCleanup.current = null;
       }
 
-      // Use native sign-out if available
-      if (isNativeAuthAvailable()) {
-        console.log('[GoogleAuth] Using native sign-out...');
-        await nativeSignOut();
+      // Use Capgo SocialLogin for logout on native
+      if (Capacitor.isNativePlatform()) {
+        try {
+          console.log('[GoogleAuth] Using SocialLogin logout...');
+          await SocialLogin.logout({ provider: 'google' });
+        } catch (error) {
+          console.warn('[GoogleAuth] SocialLogin logout error:', error);
+        }
       }
 
       // Revoke token if we have one
