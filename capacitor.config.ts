@@ -5,7 +5,6 @@ const config: CapacitorConfig = {
   appName: 'Npd',
   webDir: 'dist',
   server: {
-    
     cleartext: true
   },
   plugins: {
@@ -13,8 +12,12 @@ const config: CapacitorConfig = {
       smallIcon: "ic_stat_icon_config_sample",
       iconColor: "#488AFF",
     },
+    SocialLogin: {
+      google: {
+        webClientId: '52777395492-vnlk2hkr3pv15dtpgp2m51p7418vll90.apps.googleusercontent.com',
+      },
+    },
   },
-  // Deep link configuration for OAuth callback
   android: {
     allowMixedContent: true,
   },
