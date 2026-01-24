@@ -1799,20 +1799,35 @@ export default function OnboardingFlow({
               <div className="flex flex-col items-center gap-4">
                 <button
                   onClick={handleGoogleSignIn}
+                  onTouchEnd={(e) => {
+                    // Ensure touch events work on Android WebView
+                    e.preventDefault();
+                    if (!isSigningIn && !isGoogleLoading) {
+                      handleGoogleSignIn();
+                    }
+                  }}
                   disabled={isSigningIn || isGoogleLoading}
-                  className="w-72 flex items-center justify-center gap-3 bg-white border-2 border-gray-200 rounded-xl py-3 px-6 font-medium text-gray-800 hover:bg-gray-50 transition disabled:opacity-50"
+                  className="w-72 flex items-center justify-center gap-3 bg-white border-2 border-gray-200 rounded-xl py-3 px-6 font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 active:scale-[0.98] transition-all disabled:opacity-50 touch-manipulation select-none"
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
                 >
                   {isSigningIn || isGoogleLoading ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
-                    <img src={googleLogo} alt="Google" className="w-6 h-6" />
+                    <img src={googleLogo} alt="Google" className="w-6 h-6 pointer-events-none" />
                   )}
-                  {isSigningIn ? t('common.loading') : t('onboarding.googleSync.continueWithGoogle', 'Continue with Google')}
+                  <span className="pointer-events-none">
+                    {isSigningIn ? t('common.loading') : t('onboarding.googleSync.continueWithGoogle', 'Continue with Google')}
+                  </span>
                 </button>
                 
                 <button
                   onClick={handleSkipGoogleSignIn}
-                  className="text-gray-400 text-sm underline"
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    handleSkipGoogleSignIn();
+                  }}
+                  className="text-gray-400 text-sm underline touch-manipulation select-none active:text-gray-600"
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
                 >
                   {t('onboarding.googleSync.skip', 'Skip for now')}
                 </button>
