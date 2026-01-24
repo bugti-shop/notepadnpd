@@ -6,6 +6,13 @@ import { getSetting, setSetting, removeSetting } from '@/utils/settingsStorage';
 import { getGoogleDriveSyncManager, startAutoSync, stopAutoSync, setupChangeListeners } from '@/utils/googleDriveSync';
 import { startCalendarAutoSync, stopCalendarAutoSync } from '@/utils/calendarBidirectionalSync';
 import { getCalendarSyncSettings } from '@/utils/googleCalendarSync';
+import { 
+  isNativeAuthAvailable, 
+  nativeSignIn, 
+  nativeSignOut, 
+  getNativeUser,
+  NativeAuthResult 
+} from '@/plugins/NativeAuthBridge';
 
 // Google Auth types
 export interface GoogleUser {
@@ -417,9 +424,48 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
   }, [startBackgroundSync, refreshAccessToken, handleOAuthCallback]);
 
-  const signIn = useCallback(async (): Promise<boolean> => {
+   const signIn = useCallback(async (): Promise<boolean> => {
     setIsLoading(true);
     try {
+      // Check if native auth bridge is available (custom Android implementation)
+      if (isNativeAuthAvailable()) {
+        console.log('[GoogleAuth] Using native auth bridge...');
+        const result: NativeAuthResult = await nativeSignIn();
+        
+        if (result.success && result.user) {
+          const googleUser: GoogleUser = {
+            id: result.user.id,
+            email: result.user.email,
+            name: result.user.displayName,
+            givenName: result.user.givenName,
+            familyName: result.user.familyName,
+            imageUrl: result.user.photoUrl,
+          };
+          
+          const googleTokens: GoogleAuthTokens = {
+            accessToken: result.accessToken || '',
+            refreshToken: result.refreshToken,
+            idToken: result.user.idToken,
+            expiresAt: result.expiresIn ? Date.now() + (result.expiresIn * 1000) : undefined,
+          };
+          
+          setUser(googleUser);
+          setTokens(googleTokens);
+          await setSetting(STORAGE_KEYS.USER, googleUser);
+          await setSetting(STORAGE_KEYS.TOKENS, googleTokens);
+          
+          // Auto-restore data from cloud after login
+          if (googleTokens.accessToken) {
+            restoreFromCloud(googleTokens.accessToken);
+          }
+          
+          return true;
+        } else {
+          console.error('[GoogleAuth] Native sign-in failed:', result.error);
+          return false;
+        }
+      }
+      
       const state = Math.random().toString(36).substring(7);
       sessionStorage.setItem('google_oauth_state', state);
       
@@ -428,7 +474,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       await setSetting(STORAGE_KEYS.PKCE_VERIFIER, verifier);
       
       if (Capacitor.isNativePlatform()) {
-        // Use authorization code flow with PKCE for native platforms
+        // Use authorization code flow with PKCE for native platforms (Browser plugin fallback)
         const redirectUri = `${APP_SCHEME}://oauth/callback`;
         
         const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
@@ -444,7 +490,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         // Open OAuth URL in in-app browser
         // Use system browser for better compatibility with OAuth flows on Android
-        console.log('[GoogleAuth] Opening OAuth URL in browser...');
+        console.log('[GoogleAuth] Opening OAuth URL in browser (fallback)...');
         await Browser.open({ 
           url: authUrl.toString(),
           presentationStyle: 'popover', // iOS
@@ -555,6 +601,12 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (changeListenerCleanup.current) {
         changeListenerCleanup.current();
         changeListenerCleanup.current = null;
+      }
+
+      // Use native sign-out if available
+      if (isNativeAuthAvailable()) {
+        console.log('[GoogleAuth] Using native sign-out...');
+        await nativeSignOut();
       }
 
       // Revoke token if we have one
