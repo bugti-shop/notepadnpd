@@ -36,6 +36,8 @@ import {
   LayoutTemplate
 } from 'lucide-react';
 import { EditActionsSheet, ActionItem, defaultActions } from './EditActionsSheet';
+import { WaveformVisualizer } from './WaveformVisualizer';
+import { VoiceTrimmer } from './VoiceTrimmer';
 import { WaveformProgressBar } from './WaveformProgressBar';
 import { LocationSearchInput } from './LocationSearchInput';
 import { TaskTemplateSheet, TaskTemplate } from './TaskTemplateSheet';
@@ -711,15 +713,39 @@ export const TaskInputSheet = ({ isOpen, onClose, onAddTask, folders, selectedFo
               autoFocus
             />
 
-            {taskText.trim() ? (
+            {taskText.trim() || voiceRecording ? (
               <button
                 onClick={handleSend}
                 className="w-10 h-10 rounded-lg bg-primary hover:opacity-90 flex items-center justify-center transition-all flex-shrink-0"
               >
                 <Send className="h-5 w-5 text-primary-foreground rotate-45" />
               </button>
+            ) : isRecording ? (
+              <div className="flex items-center gap-2">
+                <WaveformVisualizer 
+                  audioData={audioData} 
+                  isActive={isRecording} 
+                  barCount={12}
+                  color="hsl(var(--destructive))"
+                  className="h-8"
+                />
+                <span className="text-sm font-mono text-destructive animate-pulse">
+                  {formatRecordingTime(recordingTime)}
+                </span>
+                <button 
+                  onClick={stopRecording}
+                  className="w-10 h-10 rounded-lg bg-destructive hover:opacity-90 flex items-center justify-center transition-all flex-shrink-0"
+                >
+                  <Square className="h-5 w-5 text-destructive-foreground" />
+                </button>
+              </div>
             ) : (
-              <div className="w-10 h-10" /> 
+              <button 
+                onClick={startRecording}
+                className="w-10 h-10 rounded-lg bg-muted/30 hover:bg-muted flex items-center justify-center flex-shrink-0 transition-colors"
+              >
+                <Mic className="h-5 w-5 text-muted-foreground/60" />
+              </button>
             )}
           </div>
 
@@ -759,6 +785,95 @@ export const TaskInputSheet = ({ isOpen, onClose, onAddTask, folders, selectedFo
                   {parsedTask.priority}
                 </span>
               )}
+            </div>
+          )}
+          {voiceRecording && !showTrimmer && (
+            <div className="px-4 py-3 bg-primary/10 rounded-lg flex items-center gap-3 mb-4 border border-primary/20">
+              <button
+                onClick={playVoiceRecording}
+                className="w-10 h-10 rounded-full bg-primary flex items-center justify-center flex-shrink-0 hover:opacity-90 transition-opacity"
+              >
+                {isPlaying ? (
+                  <Pause className="h-5 w-5 text-primary-foreground" />
+                ) : (
+                  <Play className="h-5 w-5 text-primary-foreground ml-0.5" />
+                )}
+              </button>
+              <div className="flex-1 flex flex-col gap-1">
+                {/* Waveform progress bar */}
+                <WaveformProgressBar
+                  audioUrl={voiceRecording.audioUrl}
+                  progress={playbackProgress}
+                  duration={voiceRecording.duration}
+                  isPlaying={isPlaying}
+                  onSeek={(percent) => {
+                    if (audioRef.current && voiceRecording) {
+                      const duration = audioRef.current.duration || voiceRecording.duration;
+                      if (duration && !isNaN(duration)) {
+                        audioRef.current.currentTime = (percent / 100) * duration;
+                        setPlaybackProgress(percent);
+                        setPlaybackCurrentTime((percent / 100) * duration);
+                      }
+                    }
+                  }}
+                  height={20}
+                />
+                {/* Time display */}
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-primary font-medium">
+                    {isPlaying ? formatRecordingTime(Math.round(playbackCurrentTime)) : '0:00'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatRecordingTime(voiceRecording.duration)}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={cyclePlaybackSpeed}
+                className="px-2 py-1 text-xs font-semibold rounded-md bg-muted hover:bg-muted/80 transition-colors min-w-[40px]"
+              >
+                {playbackSpeed}x
+              </button>
+              <button
+                onClick={() => {
+                  if (audioRef.current) {
+                    audioRef.current.pause();
+                    audioRef.current = null;
+                  }
+                  setIsPlaying(false);
+                  setShowTrimmer(true);
+                }}
+                className="p-2 hover:bg-muted rounded-full transition-colors"
+                title="Trim recording"
+              >
+                <Settings2 className="h-4 w-4 text-muted-foreground" />
+              </button>
+              <button
+                onClick={removeVoiceRecording}
+                className="p-2 hover:bg-destructive/10 rounded-full transition-colors"
+              >
+                <X className="h-4 w-4 text-destructive" />
+              </button>
+            </div>
+          )}
+          
+          {/* Voice Trimmer */}
+          {voiceRecording && showTrimmer && (
+            <div className="mb-4">
+              <VoiceTrimmer
+                audioUrl={voiceRecording.audioUrl}
+                duration={voiceRecording.duration}
+                onSave={(trimmedUrl, newDuration) => {
+                  setVoiceRecording({
+                    ...voiceRecording,
+                    audioUrl: trimmedUrl,
+                    duration: newDuration,
+                  });
+                  setShowTrimmer(false);
+                  toast.success(t('toasts.recordingTrimmed'));
+                }}
+                onCancel={() => setShowTrimmer(false)}
+              />
             </div>
           )}
 
