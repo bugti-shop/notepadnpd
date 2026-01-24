@@ -1,12 +1,112 @@
 # Android Setup Guide for Npd
 
-This guide covers the required Android permissions and setup for push notifications, voice recording, and location-based reminders.
-dependencies {
-    implementation "com.android.billingclient:billing:7.1.1"
+This guide covers the required Android permissions and setup for push notifications, location-based reminders, and **Google Sign-In**.
+
+---
+
+## ⚠️ CRITICAL: Google Sign-In Native Setup
+
+**This is required for native Google Sign-In to show the account picker (not browser redirect).**
+
+### Step 1: Modify MainActivity.java
+
+You MUST modify your `MainActivity.java` to implement the Capgo Social Login interface. Without this, Google Sign-In will redirect to browser instead of showing the native account picker.
+
+**File:** `android/app/src/main/java/nota/npd/com/MainActivity.java`
+
+```java
+package nota.npd.com;
+
+import android.content.Intent;
+import android.os.Bundle;
+
+import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.PluginHandle;
+
+import ee.forgr.capacitor.social.login.GoogleProvider;
+import ee.forgr.capacitor.social.login.SocialLoginPlugin;
+import ee.forgr.capacitor.social.login.ModifiedMainActivityForSocialLoginPlugin;
+
+public class MainActivity extends BridgeActivity implements ModifiedMainActivityForSocialLoginPlugin {
+    
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        
+        // Handle Google Sign-In result
+        if (requestCode >= GoogleProvider.REQUEST_AUTHORIZE_GOOGLE_MIN && 
+            requestCode < GoogleProvider.REQUEST_AUTHORIZE_GOOGLE_MAX) {
+            PluginHandle pluginHandle = getBridge().getPlugin("SocialLogin");
+            if (pluginHandle != null) {
+                SocialLoginPlugin plugin = (SocialLoginPlugin) pluginHandle.getInstance();
+                plugin.handleGoogleLoginIntent(requestCode, data);
+            }
+        }
+    }
+    
+    @Override
+    public void IHaveModifiedTheMainActivityForTheUseWithSocialLoginPlugin() {
+        // This method confirms that MainActivity has been properly modified
+        // for use with the Social Login plugin
+    }
 }
-<item name="android:windowBackground">#3a6cc9</item>
+```
 
+### Step 2: Add Web Client ID to strings.xml
 
+**File:** `android/app/src/main/res/values/strings.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Npd</string>
+    <string name="title_activity_main">Npd</string>
+    <string name="package_name">nota.npd.com</string>
+    <string name="custom_url_scheme">nota.npd.com</string>
+    <string name="server_client_id">52777395492-vnlk2hkr3pv15dtpgp2m51p7418vll90.apps.googleusercontent.com</string>
+</resources>
+```
+
+### Step 3: Google Cloud Console Configuration
+
+You need **TWO** OAuth client IDs:
+
+1. **Web Client ID** (already have): `52777395492-vnlk2hkr3pv15dtpgp2m51p7418vll90.apps.googleusercontent.com`
+   - Type: Web application
+   - Used in: `capacitor.config.ts` and `strings.xml`
+
+2. **Android Client ID** (create this):
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Navigate to APIs & Services → Credentials
+   - Click "Create Credentials" → "OAuth client ID"
+   - Application type: **Android**
+   - Package name: `nota.npd.com`
+   - SHA-1 certificate fingerprint: Run this command to get it:
+     ```bash
+     cd android
+     ./gradlew signingReport
+     ```
+   - Copy the SHA-1 from the debug or release variant
+
+### Step 4: Sync and Rebuild
+
+After making these changes:
+
+```bash
+npx cap sync android
+npx cap run android
+```
+
+### Troubleshooting Google Sign-In
+
+| Issue | Solution |
+|-------|----------|
+| Browser opens instead of account picker | Ensure `MainActivity.java` implements `ModifiedMainActivityForSocialLoginPlugin` |
+| Error 400: invalid_request | Check that Android Client ID exists in Google Cloud Console with correct SHA-1 |
+| "Access blocked" error | Add test users in OAuth consent screen or publish the app |
+| No accounts shown | Ensure device has Google accounts signed in |
+
+---
 
 ## Prerequisites
 
@@ -30,10 +130,6 @@ Add these permissions inside the `<manifest>` tag, before `<application>`:
 <uses-permission android:name="android.permission.VIBRATE" />
 <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-<!-- Voice Recording -->
-<uses-permission android:name="android.permission.RECORD_AUDIO" />
-<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-
 <!-- Local Notifications -->
 <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
@@ -49,7 +145,7 @@ Add these permissions inside the `<manifest>` tag, before `<application>`:
 <!-- Internet (usually already present) -->
 <uses-permission android:name="android.permission.INTERNET" />
 
-<!-- Storage for voice recordings -->
+<!-- Storage -->
 <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 ```
@@ -64,10 +160,6 @@ Add these permissions inside the `<manifest>` tag, before `<application>`:
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-
-    <!-- Voice Recording -->
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
     <!-- Local Notifications -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
@@ -207,7 +299,7 @@ For haptic feedback on notifications:
 
 1. Go to [Firebase Console](https://console.firebase.google.com/)
 2. Create a new project or select existing one
-3. Add an Android app with your package name: `app.lovable.c4920824037c4205bb9ed6cc0d5a0385`
+3. Add an Android app with your package name: `nota.npd.com`
 4. Download `google-services.json` and place it in `android/app/`
 5. Add Firebase dependencies to `android/app/build.gradle`:
 
@@ -233,14 +325,6 @@ buildscript {
 ```gradle
 apply plugin: 'com.google.gms.google-services'
 ```
-
-## Voice Recording Setup
-
-Voice recording uses the Web Audio API on the web and native permissions on Android. The `RECORD_AUDIO` permission is required.
-
-### Runtime Permission Request
-
-Android 6.0+ requires runtime permission requests. The app will automatically request microphone permission when the user tries to record.
 
 ## Local Notifications Configuration
 
@@ -278,6 +362,10 @@ Place custom sounds in:
 
 ## Troubleshooting
 
+### Google Sign-In shows browser instead of native picker
+- **Solution**: Modify `MainActivity.java` as shown in the Google Sign-In section above
+- Ensure you have both Web and Android OAuth client IDs in Google Cloud Console
+
 ### Location reminders not triggering in background
 
 1. **Background Location Permission**: Ensure "Allow all the time" is selected
@@ -305,11 +393,6 @@ Place custom sounds in:
 
 1. Go to Settings > Apps > Npd > Alarms & reminders
 2. Enable "Allow setting alarms and reminders"
-
-### Voice recording not working
-
-- Ensure `RECORD_AUDIO` permission is granted
-- Check microphone is not being used by another app
 
 ### Push notifications not registering
 
