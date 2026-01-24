@@ -295,7 +295,7 @@ const SyncSettings = () => {
 
   // Removed loading state to prevent showing spinner while auth state loads
 
-  const connectButtonStyles = "w-full h-12 justify-start gap-3 border border-border bg-background hover:bg-muted/50 text-foreground font-medium rounded-xl";
+  const connectButtonStyles = "w-full h-12 justify-start gap-3 border border-border bg-background hover:bg-muted/50 active:bg-muted active:scale-[0.99] text-foreground font-medium rounded-xl touch-manipulation select-none transition-all";
 
   return (
     <div className="space-y-6 p-4 max-w-2xl mx-auto">
@@ -441,13 +441,18 @@ const SyncSettings = () => {
               variant="outline" 
               className={connectButtonStyles}
               onClick={handleSignIn}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                handleSignIn();
+              }}
+              style={{ WebkitTapHighlightColor: 'transparent' }}
             >
               <img 
                 src={logoGoogleDrive} 
                 alt="Google" 
-                className="h-5 w-5"
+                className="h-5 w-5 pointer-events-none"
               />
-              {t('sync.signInWithGoogle')}
+              <span className="pointer-events-none">{t('sync.signInWithGoogle')}</span>
             </Button>
           )}
         </CardContent>
@@ -479,13 +484,18 @@ const SyncSettings = () => {
               variant="outline" 
               className={connectButtonStyles}
               onClick={handleSignIn}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                handleSignIn();
+              }}
+              style={{ WebkitTapHighlightColor: 'transparent' }}
             >
               <img 
                 src={logoGoogleCalendar} 
                 alt="Google Calendar" 
-                className="h-5 w-5"
+                className="h-5 w-5 pointer-events-none"
               />
-              {t('sync.signInWithGoogle')}
+              <span className="pointer-events-none">{t('sync.signInWithGoogle')}</span>
             </Button>
           ) : calendarSyncEnabled ? (
             <div className="space-y-4">

@@ -374,8 +374,14 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         appUrlListener = await App.addListener('appUrlOpen', async (event) => {
           console.log('[GoogleAuth] Deep link received:', event.url);
           
-          // Check if this is an OAuth callback
-          if (event.url.includes('access_token') || event.url.includes('error')) {
+          // Check if this is an OAuth callback - handle both authorization code flow (code) 
+          // and implicit flow (access_token) as well as errors
+          const isOAuthCallback = event.url.includes('oauth/callback') || 
+                                   event.url.includes('code=') || 
+                                   event.url.includes('access_token') || 
+                                   event.url.includes('error=');
+          
+          if (isOAuthCallback) {
             // Close the browser
             try {
               await Browser.close();
@@ -437,9 +443,12 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         authUrl.searchParams.set('prompt', 'consent');
 
         // Open OAuth URL in in-app browser
+        // Use system browser for better compatibility with OAuth flows on Android
+        console.log('[GoogleAuth] Opening OAuth URL in browser...');
         await Browser.open({ 
           url: authUrl.toString(),
-          presentationStyle: 'popover',
+          presentationStyle: 'popover', // iOS
+          windowName: '_blank', // Android Chrome Custom Tabs
         });
         
         // Return a promise that resolves when we get the deep link callback
