@@ -29,8 +29,6 @@ const getNoteColor = (note: Note): string => {
     regular: 'hsl(145, 80%, 75%)',
     sketch: 'hsl(280, 80%, 80%)',
     code: 'hsl(35, 100%, 75%)',
-    mindmap: 'hsl(340, 80%, 80%)',
-    expense: 'hsl(180, 60%, 75%)',
   };
   
   return typeColors[note.type] || 'hsl(0, 0%, 90%)';

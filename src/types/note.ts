@@ -1,4 +1,4 @@
-export type NoteType = 'sticky' | 'lined' | 'regular' | 'sketch' | 'code' | 'mindmap' | 'expense';
+export type NoteType = 'sticky' | 'lined' | 'regular' | 'sketch' | 'code';
 
 // Calendar Event Types
 export type EventRepeatType = 'never' | 'daily' | 'weekly' | 'monthly' | 'yearly';

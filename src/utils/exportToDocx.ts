@@ -58,17 +58,6 @@ export const exportNoteToDocx = async (note: Note) => {
       }
       break;
 
-    case 'mindmap':
-      sections.push(
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: 'This note contains a mind map. Mind maps cannot be fully exported to Word format.',
-              italics: true,
-            }),
-          ],
-        })
-      );
       // Try to export node texts if available
       try {
         const mindMapData = JSON.parse(note.content);
