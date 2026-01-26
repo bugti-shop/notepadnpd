@@ -87,13 +87,27 @@ const SyncSettings = () => {
       }
     };
 
+    const handleCloudRestoreComplete = (event: CustomEvent<{ success: boolean; action?: string; error?: any }>) => {
+      const { success, action } = event.detail;
+      if (success) {
+        toast({
+          title: t('sync.syncComplete'),
+          description: action === 'restored' 
+            ? t('sync.dataDownloaded') 
+            : t('sync.dataUploaded'),
+        });
+      }
+    };
+
     window.addEventListener('syncStatusChanged', handleSyncStatus as EventListener);
     window.addEventListener('calendarSyncStatusChanged', handleCalendarSyncStatus as EventListener);
+    window.addEventListener('cloudRestoreComplete', handleCloudRestoreComplete as EventListener);
     return () => {
       window.removeEventListener('syncStatusChanged', handleSyncStatus as EventListener);
       window.removeEventListener('calendarSyncStatusChanged', handleCalendarSyncStatus as EventListener);
+      window.removeEventListener('cloudRestoreComplete', handleCloudRestoreComplete as EventListener);
     };
-  }, []);
+  }, [t, toast]);
 
   // Load settings and cloud info when authenticated
   useEffect(() => {
@@ -337,18 +351,7 @@ const SyncSettings = () => {
         <CardContent className="space-y-4">
           {isAuthenticated && user ? (
             <>
-              {/* Restoring data indicator */}
-              {isRestoring && (
-                <div className="flex items-center gap-3 p-3 bg-primary/10 rounded-lg border border-primary/20">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">{t('sync.restoringData')}</p>
-                    <p className="text-xs text-muted-foreground">{t('sync.restoringDataDesc')}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* User info */}
+              {/* User info - show immediately after sign-in */}
               <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                 {user.imageUrl ? (
                   <img 
@@ -369,6 +372,16 @@ const SyncSettings = () => {
                   <LogOut className="h-4 w-4" />
                 </Button>
               </div>
+
+              {/* Restoring data indicator - subtle banner below user info */}
+              {isRestoring && (
+                <div className="flex items-center gap-3 p-3 bg-primary/10 rounded-lg border border-primary/20 animate-in fade-in duration-300">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <div className="flex-1">
+                    <p className="text-sm text-primary">{t('sync.restoringData')}</p>
+                  </div>
+                </div>
+              )}
 
               {/* Real-time sync status indicator */}
               {backgroundSyncActive && (

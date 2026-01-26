@@ -194,46 +194,53 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, []);
 
   // Auto-restore data from Google Drive after login (non-blocking)
-  const restoreFromCloud = useCallback((accessToken: string) => {
-    // Run restore in the background without blocking UI
-    // Use setTimeout to ensure UI updates first
-    setTimeout(async () => {
-      try {
-        setIsRestoring(true);
-        console.log('[GoogleAuth] Checking for cloud backup (background)...');
+  const restoreFromCloud = useCallback(async (accessToken: string) => {
+    // Start background sync immediately (don't wait for restore)
+    startBackgroundSync(accessToken);
+    
+    // Run restore in the background
+    try {
+      setIsRestoring(true);
+      console.log('[GoogleAuth] Checking for cloud backup (background)...');
+      
+      const syncManager = getGoogleDriveSyncManager(accessToken);
+      const backupInfo = await syncManager.getCloudBackupInfo();
+      
+      if (backupInfo?.exists) {
+        console.log('[GoogleAuth] Cloud backup found, downloading...');
+        const backup = await syncManager.downloadBackup();
         
-        const syncManager = getGoogleDriveSyncManager(accessToken);
-        
-        // Start background sync immediately (don't wait for restore)
-        startBackgroundSync(accessToken);
-        
-        const backupInfo = await syncManager.getCloudBackupInfo();
-        
-        if (backupInfo?.exists) {
-          console.log('[GoogleAuth] Cloud backup found, downloading...');
-          const backup = await syncManager.downloadBackup();
+        if (backup) {
+          console.log('[GoogleAuth] Restoring data from cloud backup...');
+          const restored = await syncManager.restoreFromBackup(backup);
           
-          if (backup) {
-            console.log('[GoogleAuth] Restoring data from cloud backup...');
-            const restored = await syncManager.restoreFromBackup(backup);
-            
-            if (restored) {
-              console.log('[GoogleAuth] Data restored successfully!');
-            } else {
-              console.warn('[GoogleAuth] Failed to restore data');
-            }
+          if (restored) {
+            console.log('[GoogleAuth] Data restored successfully!');
+            // Dispatch event for toast notification
+            window.dispatchEvent(new CustomEvent('cloudRestoreComplete', { 
+              detail: { success: true, action: 'restored' } 
+            }));
+          } else {
+            console.warn('[GoogleAuth] Failed to restore data');
           }
-        } else {
-          console.log('[GoogleAuth] No cloud backup found, uploading local data...');
-          const localData = await syncManager.collectBackupData();
-          await syncManager.uploadBackup(localData);
         }
-      } catch (error) {
-        console.error('[GoogleAuth] Error restoring from cloud:', error);
-      } finally {
-        setIsRestoring(false);
+      } else {
+        console.log('[GoogleAuth] No cloud backup found, uploading local data...');
+        const localData = await syncManager.collectBackupData();
+        await syncManager.uploadBackup(localData);
+        // Dispatch event for toast notification
+        window.dispatchEvent(new CustomEvent('cloudRestoreComplete', { 
+          detail: { success: true, action: 'uploaded' } 
+        }));
       }
-    }, 0);
+    } catch (error) {
+      console.error('[GoogleAuth] Error restoring from cloud:', error);
+      window.dispatchEvent(new CustomEvent('cloudRestoreComplete', { 
+        detail: { success: false, error } 
+      }));
+    } finally {
+      setIsRestoring(false);
+    }
   }, [startBackgroundSync]);
 
   // Handle OAuth callback - now handles authorization code exchange
