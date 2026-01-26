@@ -748,10 +748,21 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   );
 };
 
-export const useGoogleAuth = () => {
+export const useGoogleAuth = (): GoogleAuthContextType => {
   const context = useContext(GoogleAuthContext);
-  if (context === undefined) {
-    throw new Error('useGoogleAuth must be used within a GoogleAuthProvider');
+  if (!context) {
+    // Return a safe default during initial render or HMR
+    console.warn('[GoogleAuth] Context not available, returning default state');
+    return {
+      user: null,
+      tokens: null,
+      isAuthenticated: false,
+      isLoading: true,
+      isRestoring: false,
+      signIn: async () => false,
+      signOut: async () => {},
+      refreshTokens: async () => false,
+    };
   }
   return context;
 };
