@@ -19,6 +19,7 @@ package nota.npd.com;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.PluginHandle;
@@ -29,18 +30,38 @@ import ee.forgr.capacitor.social.login.ModifiedMainActivityForSocialLoginPlugin;
 
 public class MainActivity extends BridgeActivity implements ModifiedMainActivityForSocialLoginPlugin {
     
+    private static final String TAG = "MainActivity";
+    
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        Log.d(TAG, "onActivityResult: requestCode=" + requestCode + ", resultCode=" + resultCode);
         
-        // Handle Google Sign-In result
+        // CRITICAL: Handle Google Sign-In result BEFORE calling super
+        // This ensures the SocialLogin plugin receives the result in release builds
+        boolean handled = false;
         if (requestCode >= GoogleProvider.REQUEST_AUTHORIZE_GOOGLE_MIN && 
             requestCode < GoogleProvider.REQUEST_AUTHORIZE_GOOGLE_MAX) {
+            Log.d(TAG, "Handling Google Sign-In result");
             PluginHandle pluginHandle = getBridge().getPlugin("SocialLogin");
             if (pluginHandle != null) {
                 SocialLoginPlugin plugin = (SocialLoginPlugin) pluginHandle.getInstance();
-                plugin.handleGoogleLoginIntent(requestCode, data);
+                if (plugin != null) {
+                    plugin.handleGoogleLoginIntent(requestCode, data);
+                    handled = true;
+                    Log.d(TAG, "Google Sign-In result forwarded to plugin");
+                } else {
+                    Log.e(TAG, "SocialLoginPlugin instance is null");
+                }
+            } else {
+                Log.e(TAG, "SocialLogin plugin handle not found");
             }
+        }
+        
+        // Always call super to ensure Capacitor processes other results
+        super.onActivityResult(requestCode, resultCode, data);
+        
+        if (!handled) {
+            Log.d(TAG, "Result not handled by SocialLogin, passed to Capacitor");
         }
     }
     
