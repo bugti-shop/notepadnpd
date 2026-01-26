@@ -1450,7 +1450,12 @@
     "calendarSyncInfo": "Changes sync automatically every 5 minutes, and instantly when you create or edit tasks",
     "enableBidirectionalSync": "Enable to sync tasks and events between the app and Google Calendar",
     "imported": "imported",
-    "exported": "exported"
+    "exported": "exported",
+    "requestingCalendarAccess": "Requesting Calendar Access",
+    "pleaseGrantAccess": "Please grant access to your Google Calendar to enable sync",
+    "calendarAccessDenied": "Calendar Access Denied",
+    "calendarAccessRequired": "Calendar access is required to enable sync. Please try again.",
+    "dontAskAgain": "Don't ask me again"
   },
   "welcome": {
     "startJourney": "Start Your Productivity Journey",

@@ -51,7 +51,7 @@ interface CalendarSyncStatus {
 const SyncSettings = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { user, tokens, isAuthenticated, isLoading: authLoading, isRestoring, signIn, signOut } = useGoogleAuth();
+  const { user, tokens, isAuthenticated, isLoading: authLoading, isRestoring, hasCalendarAccess, signIn, signOut, requestCalendarAccess } = useGoogleAuth();
   
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
@@ -233,6 +233,28 @@ const SyncSettings = () => {
   };
 
   const handleCalendarSyncToggle = async (enabled: boolean) => {
+    if (enabled && !hasCalendarAccess) {
+      // Request calendar access incrementally (user will be prompted for consent)
+      setIsCalendarSyncing(true);
+      toast({
+        title: t('sync.requestingCalendarAccess'),
+        description: t('sync.pleaseGrantAccess'),
+      });
+      
+      const granted = await requestCalendarAccess();
+      
+      if (!granted) {
+        setIsCalendarSyncing(false);
+        toast({
+          title: t('sync.calendarAccessDenied'),
+          description: t('sync.calendarAccessRequired'),
+          variant: "destructive",
+        });
+        return;
+      }
+      setIsCalendarSyncing(false);
+    }
+    
     setCalendarSyncEnabled(enabled);
     await setCalendarSyncSettings({ enabled });
     

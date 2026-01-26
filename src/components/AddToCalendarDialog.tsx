@@ -32,7 +32,7 @@ export const AddToCalendarDialog = ({
 }: AddToCalendarDialogProps) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { tokens, isAuthenticated } = useGoogleAuth();
+  const { tokens, isAuthenticated, hasCalendarAccess, requestCalendarAccess } = useGoogleAuth();
   const [isCreating, setIsCreating] = useState(false);
   const [dontAskAgain, setDontAskAgain] = useState(false);
 
@@ -48,6 +48,28 @@ export const AddToCalendarDialog = ({
     }
 
     setIsCreating(true);
+    
+    // Check for calendar access and request if needed
+    if (!hasCalendarAccess) {
+      toast({
+        title: t('sync.requestingCalendarAccess'),
+        description: t('sync.pleaseGrantAccess'),
+      });
+      
+      const granted = await requestCalendarAccess();
+      
+      if (!granted) {
+        setIsCreating(false);
+        toast({
+          title: t('sync.calendarAccessDenied'),
+          description: t('sync.calendarAccessRequired'),
+          variant: "destructive",
+        });
+        onClose();
+        return;
+      }
+    }
+    
     try {
       const calSettings = await getCalendarSyncSettings();
       const calManager = new GoogleCalendarSyncManager(tokens.accessToken);

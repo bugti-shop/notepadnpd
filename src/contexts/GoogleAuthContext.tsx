@@ -21,7 +21,7 @@ export interface GoogleUser {
 export interface GoogleAuthTokens {
   accessToken: string;
   refreshToken?: string;
-  idToken?: string;
+  idToken: string; // REQUIRED - ID Token is the only valid proof of Google identity
   expiresAt?: number;
 }
 
@@ -31,9 +31,11 @@ interface GoogleAuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   isRestoring: boolean;
+  hasCalendarAccess: boolean;
   signIn: () => Promise<boolean>;
   signOut: () => Promise<void>;
   refreshTokens: () => Promise<boolean>;
+  requestCalendarAccess: () => Promise<boolean>;
 }
 
 const GoogleAuthContext = createContext<GoogleAuthContextType | undefined>(undefined);
@@ -41,19 +43,28 @@ const GoogleAuthContext = createContext<GoogleAuthContextType | undefined>(undef
 // Web Client ID (required for OAuth)
 const GOOGLE_WEB_CLIENT_ID = '52777395492-vnlk2hkr3pv15dtpgp2m51p7418vll90.apps.googleusercontent.com';
 
-// Scopes for Google APIs
-const SCOPES = [
+// INITIAL SCOPES - Minimal for login (NO calendar scopes)
+// ID Token is guaranteed via 'openid' scope
+const INITIAL_SCOPES = [
+  'openid', // Required for ID Token
   'profile',
   'email',
-  'https://www.googleapis.com/auth/drive.appdata',
+  'https://www.googleapis.com/auth/drive.appdata', // For cloud sync
+];
+
+// CALENDAR SCOPES - Requested incrementally when user enables calendar features
+const CALENDAR_SCOPES = [
   'https://www.googleapis.com/auth/calendar.events',
   'https://www.googleapis.com/auth/calendar.calendars',
 ];
+
+const STORAGE_KEYS_CALENDAR_ACCESS = 'google_calendar_access_granted';
 
 const STORAGE_KEYS = {
   USER: 'google_user',
   TOKENS: 'google_tokens',
   PKCE_VERIFIER: 'google_pkce_verifier',
+  CALENDAR_ACCESS: 'google_calendar_access_granted',
 };
 
 // Custom URL scheme for deep linking (matches capacitor.config.ts appId)
@@ -105,8 +116,14 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [tokens, setTokens] = useState<GoogleAuthTokens | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [hasCalendarAccess, setHasCalendarAccess] = useState(false);
   const changeListenerCleanup = useRef<(() => void) | null>(null);
   const signInResolver = useRef<((value: boolean) => void) | null>(null);
+
+  // Load calendar access state on mount
+  useEffect(() => {
+    getSetting<boolean>(STORAGE_KEYS.CALENDAR_ACCESS, false).then(setHasCalendarAccess);
+  }, []);
 
   // Initialize plugin on mount
   useEffect(() => {
@@ -241,6 +258,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
       
       let accessToken: string | null = null;
+      let idToken: string | null = null;
       let refreshToken: string | undefined;
       let expiresIn: number = 3600;
       
@@ -273,6 +291,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         
         const tokenData = await tokenResponse.json();
         accessToken = tokenData.access_token;
+        idToken = tokenData.id_token;
         refreshToken = tokenData.refresh_token;
         expiresIn = tokenData.expires_in || 3600;
         
@@ -286,6 +305,12 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       
       if (!accessToken) {
         console.error('[GoogleAuth] No access token received');
+        return false;
+      }
+
+      // CRITICAL: ID Token is REQUIRED for authentication
+      if (!idToken) {
+        console.error('[GoogleAuth] CRITICAL: ID Token is missing from OAuth callback!');
         return false;
       }
       
@@ -312,6 +337,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       const googleTokens: GoogleAuthTokens = {
         accessToken,
+        idToken, // REQUIRED - guaranteed non-null (checked above)
         refreshToken,
         expiresAt: Date.now() + (expiresIn * 1000),
       };
@@ -457,7 +483,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           const result = await SocialLogin.login({
             provider: 'google',
             options: {
-              scopes: SCOPES,
+              scopes: INITIAL_SCOPES,
             },
           });
           
@@ -500,6 +526,16 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             
             console.log('[GoogleAuth] Parsed profile:', profile);
             console.log('[GoogleAuth] Access token exists:', !!accessToken);
+            console.log('[GoogleAuth] ID token exists:', !!idToken);
+            
+            // CRITICAL: ID Token is REQUIRED for authentication
+            // ID Token is the only valid proof of Google identity
+            if (!idToken) {
+              console.error('[GoogleAuth] CRITICAL: ID Token is missing! Sign-in cannot be considered successful without ID Token.');
+              console.error('[GoogleAuth] This may indicate a configuration issue with the native plugin or Google Cloud Console setup.');
+              setIsLoading(false);
+              return false;
+            }
             
             if (profile && accessToken) {
               // Map profile fields - handle different field names from different Android SDK versions
@@ -514,10 +550,11 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
               
               console.log('[GoogleAuth] Mapped user:', googleUser);
               
+              // ID Token is guaranteed to exist at this point (checked above)
               const googleTokens: GoogleAuthTokens = {
                 accessToken: accessToken,
                 refreshToken: undefined, // Not available in online mode
-                idToken: idToken || undefined,
+                idToken: idToken, // REQUIRED - guaranteed non-null
                 expiresAt: expiresAt,
               };
               
@@ -526,7 +563,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
               await setSetting(STORAGE_KEYS.USER, googleUser);
               await setSetting(STORAGE_KEYS.TOKENS, googleTokens);
               
-              console.log('[GoogleAuth] User and tokens saved successfully');
+              console.log('[GoogleAuth] User and tokens saved successfully (with ID Token)');
               
               // Set loading to false BEFORE starting restore
               setIsLoading(false);
@@ -579,7 +616,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         authUrl.searchParams.set('client_id', GOOGLE_WEB_CLIENT_ID);
         authUrl.searchParams.set('redirect_uri', redirectUri);
         authUrl.searchParams.set('response_type', 'code');
-        authUrl.searchParams.set('scope', SCOPES.join(' '));
+        authUrl.searchParams.set('scope', INITIAL_SCOPES.join(' '));
         authUrl.searchParams.set('state', state);
         authUrl.searchParams.set('code_challenge', challenge);
         authUrl.searchParams.set('code_challenge_method', 'S256');
@@ -606,80 +643,25 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           }, 5 * 60 * 1000);
         });
       } else {
-        // Web OAuth flow using popup
+        // Web OAuth flow using authorization code flow (required for ID token)
         const redirectUri = window.location.origin + '/auth/callback';
         
         const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
         authUrl.searchParams.set('client_id', GOOGLE_WEB_CLIENT_ID);
         authUrl.searchParams.set('redirect_uri', redirectUri);
-        authUrl.searchParams.set('response_type', 'token');
-        authUrl.searchParams.set('scope', SCOPES.join(' '));
+        authUrl.searchParams.set('response_type', 'code'); // Changed from 'token' to get id_token
+        authUrl.searchParams.set('scope', INITIAL_SCOPES.join(' '));
         authUrl.searchParams.set('state', state);
-        authUrl.searchParams.set('prompt', 'select_account');
+        authUrl.searchParams.set('code_challenge', challenge);
+        authUrl.searchParams.set('code_challenge_method', 'S256');
+        authUrl.searchParams.set('access_type', 'offline');
+        authUrl.searchParams.set('prompt', 'consent');
 
-        const popup = window.open(authUrl.toString(), 'google-auth', 'width=500,height=600');
+        // Navigate in same window for web (will redirect back via /auth/callback)
+        window.location.href = authUrl.toString();
         
-        return new Promise((resolve) => {
-          const handleMessage = async (event: MessageEvent) => {
-            if (event.origin !== window.location.origin) return;
-            
-            if (event.data?.type === 'google-auth-success') {
-              window.removeEventListener('message', handleMessage);
-              
-              const { accessToken, expiresIn } = event.data;
-              
-              const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-                headers: { Authorization: `Bearer ${accessToken}` },
-              });
-              
-              if (userResponse.ok) {
-                const userData = await userResponse.json();
-                
-                const googleUser: GoogleUser = {
-                  id: userData.id,
-                  email: userData.email,
-                  name: userData.name,
-                  givenName: userData.given_name,
-                  familyName: userData.family_name,
-                  imageUrl: userData.picture,
-                };
-
-                const googleTokens: GoogleAuthTokens = {
-                  accessToken,
-                  expiresAt: Date.now() + (expiresIn * 1000),
-                };
-
-                setUser(googleUser);
-                setTokens(googleTokens);
-                await setSetting(STORAGE_KEYS.USER, googleUser);
-                await setSetting(STORAGE_KEYS.TOKENS, googleTokens);
-
-                // Auto-restore data from cloud after login
-                if (accessToken) {
-                  restoreFromCloud(accessToken);
-                }
-
-                resolve(true);
-              } else {
-                resolve(false);
-              }
-            } else if (event.data?.type === 'google-auth-error') {
-              window.removeEventListener('message', handleMessage);
-              resolve(false);
-            }
-          };
-
-          window.addEventListener('message', handleMessage);
-
-          const checkClosed = setInterval(() => {
-            if (popup?.closed) {
-              clearInterval(checkClosed);
-              window.removeEventListener('message', handleMessage);
-              setIsLoading(false);
-              resolve(false);
-            }
-          }, 1000);
-        });
+        // Return a promise that never resolves (page will navigate away)
+        return new Promise(() => {});
       }
     } catch (error) {
       console.error('[GoogleAuth] Sign-in error:', error);
@@ -730,15 +712,111 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return refreshAccessToken(tokens.refreshToken);
   }, [tokens, refreshAccessToken]);
 
+  // Request calendar access incrementally (when user enables calendar features)
+  const requestCalendarAccess = useCallback(async (): Promise<boolean> => {
+    if (!tokens?.accessToken) {
+      console.error('[GoogleAuth] Cannot request calendar access: not authenticated');
+      return false;
+    }
+
+    try {
+      console.log('[GoogleAuth] Requesting incremental calendar access...');
+      
+      if (Capacitor.isNativePlatform()) {
+        // Native: Use SocialLogin with calendar scopes
+        await initializeSocialLogin();
+        
+        const result = await SocialLogin.login({
+          provider: 'google',
+          options: {
+            scopes: [...INITIAL_SCOPES, ...CALENDAR_SCOPES],
+          },
+        });
+        
+        console.log('[GoogleAuth] Calendar access result:', JSON.stringify(result, null, 2));
+        
+        if (result?.provider === 'google' && result.result) {
+          const loginResult = result.result as any;
+          
+          // Extract tokens from the response
+          let newAccessToken: string | null = null;
+          let newIdToken: string | null = null;
+          
+          if (loginResult.responseType === 'online' || loginResult.profile) {
+            newAccessToken = loginResult.accessToken?.token || loginResult.accessToken;
+            newIdToken = loginResult.idToken;
+          } else if (loginResult.credential) {
+            newAccessToken = loginResult.credential?.accessToken || loginResult.accessToken?.token;
+            newIdToken = loginResult.credential?.idToken || loginResult.idToken;
+          } else {
+            newAccessToken = loginResult.accessToken?.token || loginResult.accessToken;
+            newIdToken = loginResult.idToken;
+          }
+          
+          if (newAccessToken && newIdToken) {
+            // Update tokens with new scopes
+            const updatedTokens: GoogleAuthTokens = {
+              ...tokens,
+              accessToken: newAccessToken,
+              idToken: newIdToken,
+            };
+            
+            setTokens(updatedTokens);
+            await setSetting(STORAGE_KEYS.TOKENS, updatedTokens);
+            setHasCalendarAccess(true);
+            await setSetting(STORAGE_KEYS.CALENDAR_ACCESS, true);
+            
+            console.log('[GoogleAuth] Calendar access granted successfully');
+            return true;
+          }
+        }
+        
+        console.error('[GoogleAuth] Failed to get calendar access');
+        return false;
+      } else {
+        // Web: Redirect with incremental scopes
+        const state = Math.random().toString(36).substring(7);
+        sessionStorage.setItem('google_oauth_state', state);
+        sessionStorage.setItem('google_calendar_request', 'true');
+        
+        const { verifier, challenge } = await generatePKCE();
+        await setSetting(STORAGE_KEYS.PKCE_VERIFIER, verifier);
+        
+        const redirectUri = window.location.origin + '/auth/callback';
+        const allScopes = [...INITIAL_SCOPES, ...CALENDAR_SCOPES];
+        
+        const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+        authUrl.searchParams.set('client_id', GOOGLE_WEB_CLIENT_ID);
+        authUrl.searchParams.set('redirect_uri', redirectUri);
+        authUrl.searchParams.set('response_type', 'code');
+        authUrl.searchParams.set('scope', allScopes.join(' '));
+        authUrl.searchParams.set('state', state);
+        authUrl.searchParams.set('code_challenge', challenge);
+        authUrl.searchParams.set('code_challenge_method', 'S256');
+        authUrl.searchParams.set('access_type', 'offline');
+        authUrl.searchParams.set('prompt', 'consent');
+        authUrl.searchParams.set('include_granted_scopes', 'true'); // Incremental auth
+        
+        window.location.href = authUrl.toString();
+        return true; // Will redirect
+      }
+    } catch (error) {
+      console.error('[GoogleAuth] Error requesting calendar access:', error);
+      return false;
+    }
+  }, [tokens]);
+
   const value: GoogleAuthContextType = {
     user,
     tokens,
     isAuthenticated: !!user && !!tokens,
     isLoading,
     isRestoring,
+    hasCalendarAccess,
     signIn,
     signOut,
     refreshTokens,
+    requestCalendarAccess,
   };
 
   return (
@@ -759,9 +837,11 @@ export const useGoogleAuth = (): GoogleAuthContextType => {
       isAuthenticated: false,
       isLoading: true,
       isRestoring: false,
+      hasCalendarAccess: false,
       signIn: async () => false,
       signOut: async () => {},
       refreshTokens: async () => false,
+      requestCalendarAccess: async () => false,
     };
   }
   return context;
