@@ -461,47 +461,84 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             },
           });
           
-          console.log('[GoogleAuth] SocialLogin result:', result);
+          console.log('[GoogleAuth] SocialLogin result:', JSON.stringify(result, null, 2));
           
           if (result?.provider === 'google' && result.result) {
-            // Check if it's an online response (has profile)
-            if (result.result.responseType === 'online') {
-              const onlineResult = result.result;
-              const profile = onlineResult.profile;
-              const accessToken = onlineResult.accessToken?.token;
-              const idToken = onlineResult.idToken;
+            const loginResult = result.result as any;
+            
+            // Handle various response types from the plugin
+            // The plugin may return data in different structures depending on Android/iOS
+            let profile: any = null;
+            let accessToken: string | null = null;
+            let idToken: string | null = null;
+            let expiresAt: number = Date.now() + 3600000;
+            
+            // Check for online response type
+            if (loginResult.responseType === 'online' || loginResult.profile) {
+              profile = loginResult.profile;
+              accessToken = loginResult.accessToken?.token || loginResult.accessToken;
+              idToken = loginResult.idToken;
               
-              if (profile && accessToken) {
-                const googleUser: GoogleUser = {
-                  id: profile.id || '',
-                  email: profile.email || '',
-                  name: profile.name || '',
-                  givenName: profile.givenName || undefined,
-                  familyName: profile.familyName || undefined,
-                  imageUrl: profile.imageUrl || undefined,
-                };
-                
-                const googleTokens: GoogleAuthTokens = {
-                  accessToken: accessToken,
-                  refreshToken: undefined, // Not available in online mode
-                  idToken: idToken || undefined,
-                  expiresAt: onlineResult.accessToken?.expires 
-                    ? new Date(onlineResult.accessToken.expires).getTime() 
-                    : Date.now() + 3600000,
-                };
-                
-                setUser(googleUser);
-                setTokens(googleTokens);
-                await setSetting(STORAGE_KEYS.USER, googleUser);
-                await setSetting(STORAGE_KEYS.TOKENS, googleTokens);
-                
-                // Auto-restore data from cloud after login
-                if (googleTokens.accessToken) {
-                  restoreFromCloud(googleTokens.accessToken);
-                }
-                
-                return true;
+              if (loginResult.accessToken?.expires) {
+                expiresAt = new Date(loginResult.accessToken.expires).getTime();
               }
+            }
+            
+            // Fallback: check for direct credential structure (some Android responses)
+            if (!profile && loginResult.credential) {
+              profile = loginResult.credential;
+              accessToken = loginResult.credential?.accessToken || loginResult.accessToken?.token;
+              idToken = loginResult.credential?.idToken || loginResult.idToken;
+            }
+            
+            // Another fallback: the result itself might be the profile
+            if (!profile && (loginResult.email || loginResult.id || loginResult.sub)) {
+              profile = loginResult;
+              accessToken = loginResult.accessToken?.token || loginResult.accessToken;
+              idToken = loginResult.idToken;
+            }
+            
+            console.log('[GoogleAuth] Parsed profile:', profile);
+            console.log('[GoogleAuth] Access token exists:', !!accessToken);
+            
+            if (profile && accessToken) {
+              // Map profile fields - handle different field names from different Android SDK versions
+              const googleUser: GoogleUser = {
+                id: profile.id || profile.sub || profile.userId || profile.email || '',
+                email: profile.email || '',
+                name: profile.name || profile.displayName || `${profile.givenName || ''} ${profile.familyName || ''}`.trim() || profile.email?.split('@')[0] || '',
+                givenName: profile.givenName || profile.given_name || undefined,
+                familyName: profile.familyName || profile.family_name || undefined,
+                imageUrl: profile.imageUrl || profile.picture || profile.photoUrl || undefined,
+              };
+              
+              console.log('[GoogleAuth] Mapped user:', googleUser);
+              
+              const googleTokens: GoogleAuthTokens = {
+                accessToken: accessToken,
+                refreshToken: undefined, // Not available in online mode
+                idToken: idToken || undefined,
+                expiresAt: expiresAt,
+              };
+              
+              setUser(googleUser);
+              setTokens(googleTokens);
+              await setSetting(STORAGE_KEYS.USER, googleUser);
+              await setSetting(STORAGE_KEYS.TOKENS, googleTokens);
+              
+              console.log('[GoogleAuth] User and tokens saved successfully');
+              
+              // Set loading to false BEFORE starting restore
+              setIsLoading(false);
+              
+              // Auto-restore data from cloud after login
+              if (googleTokens.accessToken) {
+                restoreFromCloud(googleTokens.accessToken);
+              }
+              
+              return true;
+            } else {
+              console.error('[GoogleAuth] Missing profile or accessToken:', { hasProfile: !!profile, hasToken: !!accessToken });
             }
           }
           
