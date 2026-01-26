@@ -193,42 +193,47 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     console.log('[GoogleAuth] Background sync started');
   }, []);
 
-  // Auto-restore data from Google Drive after login
-  const restoreFromCloud = useCallback(async (accessToken: string) => {
-    try {
-      setIsRestoring(true);
-      console.log('[GoogleAuth] Checking for cloud backup...');
-      
-      const syncManager = getGoogleDriveSyncManager(accessToken);
-      const backupInfo = await syncManager.getCloudBackupInfo();
-      
-      if (backupInfo?.exists) {
-        console.log('[GoogleAuth] Cloud backup found, downloading...');
-        const backup = await syncManager.downloadBackup();
+  // Auto-restore data from Google Drive after login (non-blocking)
+  const restoreFromCloud = useCallback((accessToken: string) => {
+    // Run restore in the background without blocking UI
+    // Use setTimeout to ensure UI updates first
+    setTimeout(async () => {
+      try {
+        setIsRestoring(true);
+        console.log('[GoogleAuth] Checking for cloud backup (background)...');
         
-        if (backup) {
-          console.log('[GoogleAuth] Restoring data from cloud backup...');
-          const restored = await syncManager.restoreFromBackup(backup);
+        const syncManager = getGoogleDriveSyncManager(accessToken);
+        
+        // Start background sync immediately (don't wait for restore)
+        startBackgroundSync(accessToken);
+        
+        const backupInfo = await syncManager.getCloudBackupInfo();
+        
+        if (backupInfo?.exists) {
+          console.log('[GoogleAuth] Cloud backup found, downloading...');
+          const backup = await syncManager.downloadBackup();
           
-          if (restored) {
-            console.log('[GoogleAuth] Data restored successfully!');
-          } else {
-            console.warn('[GoogleAuth] Failed to restore data');
+          if (backup) {
+            console.log('[GoogleAuth] Restoring data from cloud backup...');
+            const restored = await syncManager.restoreFromBackup(backup);
+            
+            if (restored) {
+              console.log('[GoogleAuth] Data restored successfully!');
+            } else {
+              console.warn('[GoogleAuth] Failed to restore data');
+            }
           }
+        } else {
+          console.log('[GoogleAuth] No cloud backup found, uploading local data...');
+          const localData = await syncManager.collectBackupData();
+          await syncManager.uploadBackup(localData);
         }
-      } else {
-        console.log('[GoogleAuth] No cloud backup found, uploading local data...');
-        const localData = await syncManager.collectBackupData();
-        await syncManager.uploadBackup(localData);
+      } catch (error) {
+        console.error('[GoogleAuth] Error restoring from cloud:', error);
+      } finally {
+        setIsRestoring(false);
       }
-      
-      // Start background sync after restore
-      startBackgroundSync(accessToken);
-    } catch (error) {
-      console.error('[GoogleAuth] Error restoring from cloud:', error);
-    } finally {
-      setIsRestoring(false);
-    }
+    }, 0);
   }, [startBackgroundSync]);
 
   // Handle OAuth callback - now handles authorization code exchange
@@ -558,20 +563,28 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 expiresAt: expiresAt,
               };
               
+              // Set user and tokens immediately for instant UI update
               setUser(googleUser);
               setTokens(googleTokens);
-              await setSetting(STORAGE_KEYS.USER, googleUser);
-              await setSetting(STORAGE_KEYS.TOKENS, googleTokens);
               
-              console.log('[GoogleAuth] User and tokens saved successfully (with ID Token)');
-              
-              // Set loading to false BEFORE starting restore
+              // Set loading to false IMMEDIATELY for instant UI feedback
               setIsLoading(false);
               
-              // Auto-restore data from cloud after login
-              if (googleTokens.accessToken) {
-                restoreFromCloud(googleTokens.accessToken);
-              }
+              console.log('[GoogleAuth] Sign-in successful - UI updated immediately');
+              
+              // Save to storage and restore from cloud in background (non-blocking)
+              Promise.all([
+                setSetting(STORAGE_KEYS.USER, googleUser),
+                setSetting(STORAGE_KEYS.TOKENS, googleTokens),
+              ]).then(() => {
+                console.log('[GoogleAuth] User and tokens saved to storage');
+                // Start cloud restore in background
+                if (googleTokens.accessToken) {
+                  restoreFromCloud(googleTokens.accessToken);
+                }
+              }).catch(error => {
+                console.error('[GoogleAuth] Error saving to storage:', error);
+              });
               
               return true;
             } else {
