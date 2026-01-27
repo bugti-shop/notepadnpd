@@ -69,7 +69,10 @@ const SyncSettings = () => {
   const [isCalendarSyncing, setIsCalendarSyncing] = useState(false);
   const [calendarBidirectionalEnabled, setCalendarBidirectionalEnabled] = useState(false);
 
-  // Listen for sync status changes
+  // Force re-render counter for when auth changes
+  const [authChangeCounter, setAuthChangeCounter] = useState(0);
+
+  // Listen for sync status changes and auth state changes
   useEffect(() => {
     const handleSyncStatus = (event: CustomEvent<SyncStatus>) => {
       setSyncStatus(event.detail);
@@ -99,13 +102,22 @@ const SyncSettings = () => {
       }
     };
 
+    // Listen for auth state changes to force re-render
+    const handleAuthChanged = (event: CustomEvent<{ authenticated: boolean; user: any }>) => {
+      console.log('[SyncSettings] Auth changed event received:', event.detail);
+      // Force a re-render by incrementing counter
+      setAuthChangeCounter(c => c + 1);
+    };
+
     window.addEventListener('syncStatusChanged', handleSyncStatus as EventListener);
     window.addEventListener('calendarSyncStatusChanged', handleCalendarSyncStatus as EventListener);
     window.addEventListener('cloudRestoreComplete', handleCloudRestoreComplete as EventListener);
+    window.addEventListener('googleAuthChanged', handleAuthChanged as EventListener);
     return () => {
       window.removeEventListener('syncStatusChanged', handleSyncStatus as EventListener);
       window.removeEventListener('calendarSyncStatusChanged', handleCalendarSyncStatus as EventListener);
       window.removeEventListener('cloudRestoreComplete', handleCloudRestoreComplete as EventListener);
+      window.removeEventListener('googleAuthChanged', handleAuthChanged as EventListener);
     };
   }, [t, toast]);
 
