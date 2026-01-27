@@ -31,15 +31,19 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { getSuggestedFolders } from '@/utils/personalization';
 import { triggerHaptic } from '@/utils/haptics';
-import { loadNotesFromDB, saveNoteToDBSingle, deleteNoteFromDB, migrateNotesToIndexedDB, saveNotesToDB } from '@/utils/noteStorage';
+import { saveNoteToDBSingle, deleteNoteFromDB, saveNotesToDB } from '@/utils/noteStorage';
 import { getSetting, setSetting } from '@/utils/settingsStorage';
 import { logActivity } from '@/utils/activityLogger';
+import { useNotes } from '@/contexts/NotesContext';
 
 const Index = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isDarkMode, toggleDarkMode } = useDarkMode();
-  const [notes, setNotes] = useState<Note[]>([]);
+  
+  // Use global notes context - no more local loading!
+  const { notes, setNotes, isLoading: notesLoading } = useNotes();
+  
   const [folders, setFolders] = useState<Folder[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -127,21 +131,7 @@ const Index = () => {
     return () => window.removeEventListener('foldersUpdated', handleFoldersUpdated);
   }, []);
 
-  // Load notes from IndexedDB (unified storage)
-  useEffect(() => {
-    const loadNotes = async () => {
-      try {
-        // Ensure migration happens first
-        await migrateNotesToIndexedDB();
-        // Load from IndexedDB
-        const loadedNotes = await loadNotesFromDB();
-        setNotes(loadedNotes);
-      } catch (error) {
-        console.error('Error loading notes:', error);
-      }
-    };
-    loadNotes();
-  }, []);
+  // Notes are now loaded from NotesContext - no local loading needed!
 
   useEffect(() => {
     setSetting('folders', folders);

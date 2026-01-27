@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { Note } from '@/types/note';
 import { NoteEditor } from '@/components/NoteEditor';
 import { Layers, Settings, Pin, Download, ListTodo, FileText, Archive, ArchiveRestore, Trash2, RotateCcw, Sun, Moon, Search, X } from 'lucide-react';
-import { loadNotesFromDB, debouncedSaveNotes, migrateNotesToIndexedDB, saveNoteToDBSingle, saveNotesToDB, deleteNoteFromDB } from '@/utils/noteStorage';
+import { debouncedSaveNotes, saveNoteToDBSingle, saveNotesToDB, deleteNoteFromDB } from '@/utils/noteStorage';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { exportNoteToDocx } from '@/utils/exportToDocx';
@@ -14,6 +14,7 @@ import appLogo from '@/assets/app-logo.png';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import { useTranslation } from 'react-i18next';
+import { useNotes } from '@/contexts/NotesContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,27 +60,14 @@ const Notes = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { isDarkMode, toggleDarkMode } = useDarkMode();
-  const [notes, setNotes] = useState<Note[]>([]);
+  
+  // Use global notes context - no more local loading!
+  const { notes, setNotes, isLoading } = useNotes();
+  
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'active' | 'archived' | 'trash'>('active');
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Load notes from IndexedDB
-  useEffect(() => {
-    const loadNotes = async () => {
-      try {
-        // Migrate from localStorage if needed
-        await migrateNotesToIndexedDB();
-        // Load from IndexedDB
-        const loadedNotes = await loadNotesFromDB();
-        setNotes(loadedNotes);
-      } catch (error) {
-        console.error('Error loading notes:', error);
-      }
-    };
-    loadNotes();
-  }, []);
 
   const handleSaveNote = useCallback((note: Note) => {
     setNotes(prevNotes => {

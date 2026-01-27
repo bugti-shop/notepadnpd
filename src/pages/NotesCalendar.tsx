@@ -12,14 +12,18 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { cn } from '@/lib/utils';
 import appLogo from '@/assets/app-logo.png';
 import { useDarkMode } from '@/hooks/useDarkMode';
-import { loadNotesFromDB, saveNotesToDB, saveNoteToDBSingle, deleteNoteFromDB } from '@/utils/noteStorage';
+import { saveNoteToDBSingle, deleteNoteFromDB } from '@/utils/noteStorage';
+import { useNotes } from '@/contexts/NotesContext';
 
 const NotesCalendar = () => {
   const { t } = useTranslation();
   const { isDarkMode, toggleDarkMode } = useDarkMode();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [notes, setNotes] = useState<Note[]>([]);
+  
+  // Use global notes context - no more local loading!
+  const { notes, setNotes } = useNotes();
+  
   const [selectedDateNotes, setSelectedDateNotes] = useState<Note[]>([]);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [defaultType, setDefaultType] = useState<NoteType>('regular');
@@ -37,18 +41,7 @@ const NotesCalendar = () => {
     loadFolders();
   }, []);
 
-  useEffect(() => {
-    const loadNotes = async () => {
-      try {
-        const loadedNotes = await loadNotesFromDB();
-        setNotes(loadedNotes);
-      } catch (error) {
-        console.error('Error loading notes:', error);
-      }
-    };
-    loadNotes();
-  }, []);
-
+  // Filter notes for selected date (no loading needed - notes come from context)
   useEffect(() => {
     if (date) {
       const notesForDate = notes.filter(note =>
