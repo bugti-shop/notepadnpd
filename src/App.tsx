@@ -9,6 +9,7 @@ import { WelcomeProvider, useWelcome } from "@/contexts/WelcomeContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { RevenueCatProvider } from "@/contexts/RevenueCatContext";
 import { GoogleAuthProvider } from "@/contexts/GoogleAuthContext";
+import { NotesProvider } from "@/contexts/NotesContext";
 import OnboardingFlow from "@/components/OnboardingFlow";
 import { NavigationLoader } from "@/components/NavigationLoader";
 import Index from "./pages/Index";
@@ -143,11 +144,13 @@ const App = () => (
       <TooltipProvider>
         <RevenueCatProvider>
           <GoogleAuthProvider>
-            <WelcomeProvider>
-              <SubscriptionProvider>
-                <AppContent />
-              </SubscriptionProvider>
-            </WelcomeProvider>
+            <NotesProvider>
+              <WelcomeProvider>
+                <SubscriptionProvider>
+                  <AppContent />
+                </SubscriptionProvider>
+              </WelcomeProvider>
+            </NotesProvider>
           </GoogleAuthProvider>
         </RevenueCatProvider>
       </TooltipProvider>
