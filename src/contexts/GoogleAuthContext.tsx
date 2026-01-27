@@ -492,6 +492,8 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           // Ensure plugin is initialized
           await initializeSocialLogin();
           
+          console.log('[GoogleAuth] Calling SocialLogin.login()...');
+          
           const result = await SocialLogin.login({
             provider: 'google',
             options: {
@@ -499,10 +501,23 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             },
           });
           
-          console.log('[GoogleAuth] SocialLogin result:', JSON.stringify(result, null, 2));
+          // CRITICAL: Log the ENTIRE raw result for debugging release builds
+          console.log('[GoogleAuth] RAW SocialLogin result type:', typeof result);
+          console.log('[GoogleAuth] RAW SocialLogin result keys:', result ? Object.keys(result) : 'null');
+          console.log('[GoogleAuth] RAW SocialLogin result:', JSON.stringify(result, null, 2));
+          
+          // Defensive check: result might be null/undefined in release builds
+          if (!result) {
+            console.error('[GoogleAuth] SocialLogin returned null/undefined result');
+            setIsLoading(false);
+            return false;
+          }
           
           if (result?.provider === 'google' && result.result) {
             const loginResult = result.result as any;
+            
+            console.log('[GoogleAuth] loginResult type:', typeof loginResult);
+            console.log('[GoogleAuth] loginResult keys:', loginResult ? Object.keys(loginResult) : 'null');
             
             // Handle various response types from the plugin
             // The plugin may return data in different structures depending on Android/iOS
@@ -513,6 +528,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             
             // Check for online response type
             if (loginResult.responseType === 'online' || loginResult.profile) {
+              console.log('[GoogleAuth] Found online response type or profile');
               profile = loginResult.profile;
               accessToken = loginResult.accessToken?.token || loginResult.accessToken;
               idToken = loginResult.idToken;
@@ -524,6 +540,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             
             // Fallback: check for direct credential structure (some Android responses)
             if (!profile && loginResult.credential) {
+              console.log('[GoogleAuth] Using credential fallback');
               profile = loginResult.credential;
               accessToken = loginResult.credential?.accessToken || loginResult.accessToken?.token;
               idToken = loginResult.credential?.idToken || loginResult.idToken;
@@ -531,12 +548,29 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             
             // Another fallback: the result itself might be the profile
             if (!profile && (loginResult.email || loginResult.id || loginResult.sub)) {
+              console.log('[GoogleAuth] Using loginResult as profile fallback');
               profile = loginResult;
               accessToken = loginResult.accessToken?.token || loginResult.accessToken;
               idToken = loginResult.idToken;
             }
             
-            console.log('[GoogleAuth] Parsed profile:', profile);
+            // ADDITIONAL FALLBACK: Check for serverAuthCode response (some Android SDK versions)
+            if (!accessToken && loginResult.serverAuthCode) {
+              console.log('[GoogleAuth] Found serverAuthCode, but this flow is not supported');
+            }
+            
+            // ADDITIONAL FALLBACK: Check top-level result for tokens (cast to any for flexibility)
+            const resultData = result.result as any;
+            if (!accessToken && resultData?.accessToken) {
+              console.log('[GoogleAuth] Using top-level accessToken');
+              accessToken = resultData.accessToken?.token || resultData.accessToken;
+            }
+            if (!idToken && resultData?.idToken) {
+              console.log('[GoogleAuth] Using top-level idToken');
+              idToken = resultData.idToken;
+            }
+            
+            console.log('[GoogleAuth] Parsed profile:', JSON.stringify(profile, null, 2));
             console.log('[GoogleAuth] Access token exists:', !!accessToken);
             console.log('[GoogleAuth] ID token exists:', !!idToken);
             
@@ -544,6 +578,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             // ID Token is the only valid proof of Google identity
             if (!idToken) {
               console.error('[GoogleAuth] CRITICAL: ID Token is missing! Sign-in cannot be considered successful without ID Token.');
+              console.error('[GoogleAuth] Full loginResult for debugging:', JSON.stringify(loginResult, null, 2));
               console.error('[GoogleAuth] This may indicate a configuration issue with the native plugin or Google Cloud Console setup.');
               setIsLoading(false);
               return false;
@@ -560,7 +595,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 imageUrl: profile.imageUrl || profile.picture || profile.photoUrl || undefined,
               };
               
-              console.log('[GoogleAuth] Mapped user:', googleUser);
+              console.log('[GoogleAuth] Mapped user:', JSON.stringify(googleUser, null, 2));
               
               // ID Token is guaranteed to exist at this point (checked above)
               const googleTokens: GoogleAuthTokens = {
@@ -570,14 +605,22 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 expiresAt: expiresAt,
               };
               
+              console.log('[GoogleAuth] Setting user and tokens state...');
+              
               // Set user and tokens immediately for instant UI update
-              setUser(googleUser);
-              setTokens(googleTokens);
+              // Use functional updates to ensure React detects the change
+              setUser(() => googleUser);
+              setTokens(() => googleTokens);
               
               // Set loading to false IMMEDIATELY for instant UI feedback
               setIsLoading(false);
               
-              console.log('[GoogleAuth] Sign-in successful - UI updated immediately');
+              console.log('[GoogleAuth] Sign-in successful - state updated, isLoading=false');
+              
+              // Dispatch a custom event to notify any listeners that auth changed
+              window.dispatchEvent(new CustomEvent('googleAuthChanged', { 
+                detail: { authenticated: true, user: googleUser } 
+              }));
               
               // Save to storage and restore from cloud in background (non-blocking)
               Promise.all([
@@ -595,8 +638,18 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
               
               return true;
             } else {
-              console.error('[GoogleAuth] Missing profile or accessToken:', { hasProfile: !!profile, hasToken: !!accessToken });
+              console.error('[GoogleAuth] Missing profile or accessToken:', { 
+                hasProfile: !!profile, 
+                hasToken: !!accessToken,
+                profileKeys: profile ? Object.keys(profile) : 'null'
+              });
             }
+          } else {
+            console.error('[GoogleAuth] Invalid result structure:', {
+              hasResult: !!result,
+              provider: result?.provider,
+              hasResultData: !!result?.result
+            });
           }
           
           console.error('[GoogleAuth] SocialLogin failed: Invalid result');
@@ -604,6 +657,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           return false;
         } catch (pluginError: any) {
           console.error('[GoogleAuth] SocialLogin plugin error:', pluginError);
+          console.error('[GoogleAuth] Error details:', JSON.stringify(pluginError, null, 2));
           
           // Check if user cancelled
           if (pluginError?.message?.includes('cancel') || pluginError?.code === 'USER_CANCELLED') {
