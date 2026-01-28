@@ -1,9 +1,63 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Note } from '@/types/note';
 import { loadNotesFromDB, saveNotesToDB, saveNoteToDBSingle, deleteNoteFromDB, migrateNotesToIndexedDB } from '@/utils/noteStorage';
 
+// Lightweight note metadata for instant navigation
+export interface NoteMeta {
+  id: string;
+  type: Note['type'];
+  title: string;
+  color?: Note['color'];
+  folderId?: string;
+  isPinned?: boolean;
+  isFavorite?: boolean;
+  pinnedOrder?: number;
+  isArchived?: boolean;
+  archivedAt?: Date;
+  isDeleted?: boolean;
+  deletedAt?: Date;
+  isHidden?: boolean;
+  isProtected?: boolean;
+  metaDescription?: string;
+  reminderEnabled?: boolean;
+  reminderTime?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  // Content preview for search (first 200 chars only)
+  contentPreview: string;
+  // Full content loaded on demand
+  hasFullContent: boolean;
+}
+
+// Extract metadata from full note
+const extractNoteMeta = (note: Note): NoteMeta => ({
+  id: note.id,
+  type: note.type,
+  title: note.title,
+  color: note.color,
+  folderId: note.folderId,
+  isPinned: note.isPinned,
+  isFavorite: note.isFavorite,
+  pinnedOrder: note.pinnedOrder,
+  isArchived: note.isArchived,
+  archivedAt: note.archivedAt,
+  isDeleted: note.isDeleted,
+  deletedAt: note.deletedAt,
+  isHidden: note.isHidden,
+  isProtected: note.isProtected,
+  metaDescription: note.metaDescription,
+  reminderEnabled: note.reminderEnabled,
+  reminderTime: note.reminderTime,
+  createdAt: note.createdAt,
+  updatedAt: note.updatedAt,
+  // Only store first 200 chars for search - this is the key optimization!
+  contentPreview: note.content.replace(/<[^>]*>/g, '').slice(0, 200),
+  hasFullContent: true,
+});
+
 interface NotesContextType {
   notes: Note[];
+  notesMeta: NoteMeta[];
   isLoading: boolean;
   isInitialized: boolean;
   setNotes: React.Dispatch<React.SetStateAction<Note[]>>;
@@ -12,6 +66,8 @@ interface NotesContextType {
   updateNote: (noteId: string, updates: Partial<Note>) => Promise<void>;
   bulkUpdateNotes: (noteIds: string[], updates: Partial<Note>) => Promise<void>;
   refreshNotes: () => Promise<void>;
+  // Get full note content on demand
+  getNoteById: (noteId: string) => Note | undefined;
 }
 
 const NotesContext = createContext<NotesContextType | undefined>(undefined);
@@ -22,6 +78,12 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isInitialized, setIsInitialized] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedRef = useRef<string>('');
+
+  // Memoized metadata extraction - this is what makes navigation instant!
+  // Only recomputes when note IDs or metadata fields change, not content
+  const notesMeta = useMemo(() => {
+    return notes.map(extractNoteMeta);
+  }, [notes.map(n => `${n.id}-${n.updatedAt.getTime()}-${n.title}-${n.isPinned}-${n.isArchived}-${n.isDeleted}`).join(',')]);
 
   // Load notes once on mount
   useEffect(() => {
@@ -78,8 +140,8 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     if (!isInitialized || notes.length === 0) return;
 
-    // Create a simple hash to detect actual changes
-    const currentHash = JSON.stringify(notes.map(n => ({ id: n.id, updatedAt: n.updatedAt })));
+    // Create a simple hash to detect actual changes (only check IDs and timestamps)
+    const currentHash = notes.map(n => `${n.id}:${n.updatedAt.getTime()}`).join('|');
     if (currentHash === lastSavedRef.current) return;
 
     // Debounce saves to avoid too many writes
@@ -151,8 +213,14 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
+  // Get full note by ID - for when user opens a note
+  const getNoteById = useCallback((noteId: string): Note | undefined => {
+    return notes.find(n => n.id === noteId);
+  }, [notes]);
+
   const value: NotesContextType = {
     notes,
+    notesMeta,
     isLoading,
     isInitialized,
     setNotes,
@@ -161,6 +229,7 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     updateNote,
     bulkUpdateNotes,
     refreshNotes,
+    getNoteById,
   };
 
   return (
