@@ -1,5 +1,5 @@
 import { BottomNavigation } from '@/components/BottomNavigation';
-import { ChevronRight, Settings as SettingsIcon, Crown, CreditCard, Palette, Check, Clock, Vibrate, ExternalLink, Globe } from 'lucide-react';
+import { ChevronRight, Settings as SettingsIcon, Crown, CreditCard, Palette, Check, Clock, Vibrate, ExternalLink, Globe, Bell } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -13,6 +13,8 @@ import { useTranslation } from 'react-i18next';
 import { languages } from '@/i18n';
 import { loadNotesFromDB, saveNotesToDB } from '@/utils/noteStorage';
 import { getSetting, setSetting, getAllSettings, clearAllSettings } from '@/utils/settingsStorage';
+import { persistentNotificationManager } from '@/utils/persistentNotification';
+import { Switch } from '@/components/ui/switch';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,11 +50,32 @@ const Settings = () => {
   const [showLanguageDialog, setShowLanguageDialog] = useState(false);
   const [hapticIntensity, setHapticIntensity] = useState<'off' | 'light' | 'medium' | 'heavy'>('medium');
   const [isRestoring, setIsRestoring] = useState(false);
+  const [persistentNotificationEnabled, setPersistentNotificationEnabled] = useState(false);
 
-  // Load haptic intensity from IndexedDB
+  // Load haptic intensity and persistent notification state from IndexedDB
   useEffect(() => {
     getSetting<'off' | 'light' | 'medium' | 'heavy'>('haptic_intensity', 'medium').then(setHapticIntensity);
+    persistentNotificationManager.isEnabled().then(setPersistentNotificationEnabled);
   }, []);
+
+  const handlePersistentNotificationToggle = async (enabled: boolean) => {
+    try {
+      if (enabled) {
+        await persistentNotificationManager.enable();
+        toast({ title: t('settings.notificationBarEnabled', 'Quick Add notification enabled') });
+      } else {
+        await persistentNotificationManager.disable();
+        toast({ title: t('settings.notificationBarDisabled', 'Quick Add notification disabled') });
+      }
+      setPersistentNotificationEnabled(enabled);
+    } catch (error) {
+      console.error('Error toggling persistent notification:', error);
+      toast({ 
+        title: t('errors.notificationToggleFailed', 'Failed to toggle notification'), 
+        variant: 'destructive' 
+      });
+    }
+  };
 
   const currentLanguage = languages.find(l => l.code === i18n.language) || languages[0];
 
@@ -352,6 +375,32 @@ const Settings = () => {
             </button>
           </div>
 
+          {/* Persistent Notification Bar - Only show on native platforms */}
+          {Capacitor.isNativePlatform() && (
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 px-4 py-3">
+                <Bell className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground text-sm font-medium">
+                  {t('settings.quickAdd', 'Quick Add')}
+                </span>
+              </div>
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-foreground text-sm">
+                    {t('settings.notificationBar', 'Notification Bar')}
+                  </span>
+                  <span className="text-muted-foreground text-xs">
+                    {t('settings.notificationBarDesc', 'Add notes & tasks from notification')}
+                  </span>
+                </div>
+                <Switch 
+                  checked={persistentNotificationEnabled}
+                  onCheckedChange={handlePersistentNotificationToggle}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Integrations & Import */}
           <div className="space-y-1">
             <button
@@ -359,7 +408,7 @@ const Settings = () => {
               className="w-full flex items-center justify-between px-4 py-3 border-b border-border hover:bg-muted transition-colors"
             >
               <div className="flex items-center gap-3">
-                <ExternalLink className="h-5 w-5 text-emerald-500" />
+                <ExternalLink className="h-5 w-5 text-primary" />
                 <span className="text-foreground text-sm">{t('settings.integrationsImport')}</span>
               </div>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
