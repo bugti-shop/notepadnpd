@@ -3,12 +3,20 @@
 
 import { getSetting, setSetting, removeSetting } from './settingsStorage';
 
-// Storage keys
+// Storage keys for per-note pattern locks
 const getPatternKey = (noteId: string) => `npd_pattern_lock_${noteId}`;
 const getPatternSaltKey = (noteId: string) => `npd_pattern_salt_${noteId}`;
 const getPatternQuestionKey = (noteId: string) => `npd_pattern_question_${noteId}`;
 const getPatternAnswerKey = (noteId: string) => `npd_pattern_answer_${noteId}`;
 const getPatternAnswerSaltKey = (noteId: string) => `npd_pattern_answer_salt_${noteId}`;
+
+// Storage keys for global app-wide pattern lock
+const GLOBAL_PATTERN_KEY = 'npd_global_pattern_lock';
+const GLOBAL_PATTERN_SALT_KEY = 'npd_global_pattern_salt';
+const GLOBAL_PATTERN_QUESTION_KEY = 'npd_global_pattern_question';
+const GLOBAL_PATTERN_ANSWER_KEY = 'npd_global_pattern_answer';
+const GLOBAL_PATTERN_ANSWER_SALT_KEY = 'npd_global_pattern_answer_salt';
+const GLOBAL_PATTERN_ENABLED_KEY = 'npd_global_pattern_enabled';
 
 // Generate a random salt
 const generateSalt = (): string => {
@@ -181,3 +189,89 @@ export const PATTERN_SECURITY_QUESTIONS = [
   "What is the name of your best childhood friend?",
   "What was your childhood nickname?",
 ];
+
+// ============= Global App-Wide Pattern Lock =============
+
+// Check if global pattern lock is enabled
+export const isGlobalPatternLockEnabled = async (): Promise<boolean> => {
+  return getSetting<boolean>(GLOBAL_PATTERN_ENABLED_KEY, false);
+};
+
+// Check if global pattern lock is set up
+export const hasGlobalPatternLock = async (): Promise<boolean> => {
+  const patternHash = await getSetting<string | null>(GLOBAL_PATTERN_KEY, null);
+  return !!patternHash;
+};
+
+// Set global pattern lock
+export const setGlobalPatternLock = async (
+  pattern: number[],
+  securityQuestion: string,
+  securityAnswer: string
+): Promise<void> => {
+  // Hash and store the pattern
+  const { hash: patternHash, salt: patternSalt } = await hashPattern(pattern);
+  await setSetting(GLOBAL_PATTERN_KEY, patternHash);
+  await setSetting(GLOBAL_PATTERN_SALT_KEY, patternSalt);
+  
+  // Hash and store the security answer
+  const normalizedAnswer = securityAnswer.toLowerCase().trim();
+  const { hash: answerHash, salt: answerSalt } = await hashPattern([...normalizedAnswer].map(c => c.charCodeAt(0)));
+  await setSetting(GLOBAL_PATTERN_QUESTION_KEY, securityQuestion);
+  await setSetting(GLOBAL_PATTERN_ANSWER_KEY, answerHash);
+  await setSetting(GLOBAL_PATTERN_ANSWER_SALT_KEY, answerSalt);
+  
+  // Enable global pattern lock
+  await setSetting(GLOBAL_PATTERN_ENABLED_KEY, true);
+};
+
+// Verify global pattern
+export const verifyGlobalPatternLock = async (pattern: number[]): Promise<boolean> => {
+  const storedHash = await getSetting<string | null>(GLOBAL_PATTERN_KEY, null);
+  const storedSalt = await getSetting<string | null>(GLOBAL_PATTERN_SALT_KEY, null);
+  
+  if (!storedHash || !storedSalt) return false;
+  
+  return verifyPattern(pattern, storedHash, storedSalt);
+};
+
+// Get global security question
+export const getGlobalPatternSecurityQuestion = async (): Promise<string | null> => {
+  return getSetting<string | null>(GLOBAL_PATTERN_QUESTION_KEY, null);
+};
+
+// Verify global security answer
+export const verifyGlobalPatternSecurityAnswer = async (answer: string): Promise<boolean> => {
+  const storedHash = await getSetting<string | null>(GLOBAL_PATTERN_ANSWER_KEY, null);
+  const storedSalt = await getSetting<string | null>(GLOBAL_PATTERN_ANSWER_SALT_KEY, null);
+  
+  if (!storedHash || !storedSalt) return false;
+  
+  const normalizedAnswer = answer.toLowerCase().trim();
+  const answerPattern = [...normalizedAnswer].map(c => c.charCodeAt(0));
+  return verifyPattern(answerPattern, storedHash, storedSalt);
+};
+
+// Reset global pattern lock
+export const resetGlobalPatternLock = async (
+  newPattern: number[],
+  securityQuestion: string,
+  securityAnswer: string
+): Promise<void> => {
+  await setGlobalPatternLock(newPattern, securityQuestion, securityAnswer);
+};
+
+// Enable/disable global pattern lock
+export const setGlobalPatternEnabled = async (enabled: boolean): Promise<void> => {
+  await setSetting(GLOBAL_PATTERN_ENABLED_KEY, enabled);
+};
+
+// Remove global pattern lock entirely
+export const removeGlobalPatternLock = async (): Promise<void> => {
+  await removeSetting(GLOBAL_PATTERN_KEY);
+  await removeSetting(GLOBAL_PATTERN_SALT_KEY);
+  await removeSetting(GLOBAL_PATTERN_QUESTION_KEY);
+  await removeSetting(GLOBAL_PATTERN_ANSWER_KEY);
+  await removeSetting(GLOBAL_PATTERN_ANSWER_SALT_KEY);
+  await removeSetting(GLOBAL_PATTERN_ENABLED_KEY);
+};
