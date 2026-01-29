@@ -1,5 +1,5 @@
 import { BottomNavigation } from '@/components/BottomNavigation';
-import { ChevronRight, Settings as SettingsIcon, Crown, CreditCard, Palette, Check, Clock, Vibrate, ExternalLink, Globe, Bell, Eye, Grid3X3 } from 'lucide-react';
+import { ChevronRight, Settings as SettingsIcon, Crown, CreditCard, Palette, Check, Clock, Vibrate, ExternalLink, Globe, Bell, Eye, Grid3X3, Fingerprint, Timer } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -18,6 +18,8 @@ import { Switch } from '@/components/ui/switch';
 import { NoteTypeVisibilitySheet } from '@/components/NoteTypeVisibilitySheet';
 import { GlobalPatternSetupSheet } from '@/components/GlobalPatternSetupSheet';
 import { hasGlobalPatternLock, isGlobalPatternLockEnabled } from '@/utils/patternLock';
+import { isBiometricAvailable, isBiometricEnabled, setBiometricEnabled, getBiometricTypeName } from '@/utils/biometricAuth';
+import { AUTO_LOCK_OPTIONS, AutoLockTimeout } from '@/hooks/useAutoLock';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,16 +55,37 @@ const Settings = () => {
   const [showLanguageDialog, setShowLanguageDialog] = useState(false);
   const [showNoteTypeVisibilitySheet, setShowNoteTypeVisibilitySheet] = useState(false);
   const [showGlobalPatternSheet, setShowGlobalPatternSheet] = useState(false);
+  const [showAutoLockDialog, setShowAutoLockDialog] = useState(false);
   const [hapticIntensity, setHapticIntensity] = useState<'off' | 'light' | 'medium' | 'heavy'>('medium');
   const [isRestoring, setIsRestoring] = useState(false);
   const [persistentNotificationEnabled, setPersistentNotificationEnabled] = useState(false);
   const [hasGlobalPattern, setHasGlobalPattern] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricEnabled, setBiometricEnabledState] = useState(false);
+  const [biometricName, setBiometricName] = useState('Biometric');
+  const [autoLockTimeout, setAutoLockTimeout] = useState<AutoLockTimeout>('off');
 
-  // Load haptic intensity and persistent notification state from IndexedDB
+  // Load settings from IndexedDB
   useEffect(() => {
     getSetting<'off' | 'light' | 'medium' | 'heavy'>('haptic_intensity', 'medium').then(setHapticIntensity);
     persistentNotificationManager.isEnabled().then(setPersistentNotificationEnabled);
     hasGlobalPatternLock().then(setHasGlobalPattern);
+    getSetting<AutoLockTimeout>('npd_auto_lock_timeout', 'off').then(setAutoLockTimeout);
+    
+    // Check biometric availability
+    const checkBiometric = async () => {
+      const available = await isBiometricAvailable();
+      setBiometricAvailable(available);
+      if (available) {
+        const [enabled, name] = await Promise.all([
+          isBiometricEnabled(),
+          getBiometricTypeName()
+        ]);
+        setBiometricEnabledState(enabled);
+        setBiometricName(name);
+      }
+    };
+    checkBiometric();
   }, []);
 
   const handlePersistentNotificationToggle = async (enabled: boolean) => {
@@ -463,6 +486,56 @@ const Settings = () => {
               </div>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
+            
+            {/* Biometric Unlock - only show if pattern is enabled and biometric available */}
+            {hasGlobalPattern && biometricAvailable && (
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                <div className="flex items-center gap-3">
+                  <Fingerprint className="h-5 w-5 text-primary" />
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-foreground text-sm">
+                      {t('settings.biometricUnlock', `${biometricName} Unlock`)}
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                      {t('settings.biometricDesc', 'Use biometrics instead of pattern')}
+                    </span>
+                  </div>
+                </div>
+                <Switch 
+                  checked={biometricEnabled}
+                  onCheckedChange={async (enabled) => {
+                    await setBiometricEnabled(enabled);
+                    setBiometricEnabledState(enabled);
+                    toast({ 
+                      title: enabled 
+                        ? t('settings.biometricEnabled', `${biometricName} unlock enabled`)
+                        : t('settings.biometricDisabled', `${biometricName} unlock disabled`)
+                    });
+                  }}
+                />
+              </div>
+            )}
+            
+            {/* Auto-Lock Timer - only show if pattern is enabled */}
+            {hasGlobalPattern && (
+              <button
+                onClick={() => setShowAutoLockDialog(true)}
+                className="w-full flex items-center justify-between px-4 py-3 border-b border-border hover:bg-muted transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Timer className="h-5 w-5 text-primary" />
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-foreground text-sm">
+                      {t('settings.autoLock', 'Auto-Lock')}
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                      {AUTO_LOCK_OPTIONS.find(o => o.value === autoLockTimeout)?.label || 'Off'}
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </button>
+            )}
           </div>
 
           {/* Integrations & Import */}
@@ -818,6 +891,47 @@ const Settings = () => {
         onClose={() => setShowGlobalPatternSheet(false)}
         onPatternSet={() => hasGlobalPatternLock().then(setHasGlobalPattern)}
       />
+
+      {/* Auto-Lock Timer Dialog */}
+      <Dialog open={showAutoLockDialog} onOpenChange={setShowAutoLockDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Timer className="h-5 w-5" />
+              {t('settings.autoLock', 'Auto-Lock Timer')}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground mb-4">
+            {t('settings.autoLockDesc', 'Automatically lock the app after a period of inactivity')}
+          </p>
+          <div className="space-y-2">
+            {AUTO_LOCK_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                onClick={async () => {
+                  setAutoLockTimeout(option.value);
+                  await setSetting('npd_auto_lock_timeout', option.value);
+                  toast({ title: t('settings.autoLockSet', { timeout: option.label }) });
+                  setShowAutoLockDialog(false);
+                }}
+                className={cn(
+                  "w-full flex items-center justify-between p-4 rounded-lg border-2 transition-all",
+                  autoLockTimeout === option.value
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-muted-foreground/30"
+                )}
+              >
+                <span className="font-medium text-foreground">{option.label}</span>
+                {autoLockTimeout === option.value && (
+                  <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+                    <Check className="h-3 w-3 text-primary-foreground" />
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
