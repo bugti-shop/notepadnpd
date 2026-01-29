@@ -301,7 +301,8 @@
       "code": "Code Note",
       "mindMap": "Mind Map",
       "expense": "Expense Tracker",
-      "sketch": "Sketch Note"
+      "sketch": "Sketch Note",
+      "voice": "Voice Note"
     },
     "daysRemaining": "{{days}} days remaining",
     "upcomingReminders": "Upcoming Reminders",
@@ -1578,5 +1579,14 @@
   "filters": {
     "hasDate": "Has Due Date",
     "almostDone": "Almost Done"
+  },
+  "voice": {
+    "recording": "Recording...",
+    "paused": "Paused",
+    "tapToRecord": "Tap to start recording",
+    "recordingComplete": "Recording complete",
+    "addRecording": "Add Recording",
+    "newRecording": "New Recording",
+    "recordAgain": "Record again"
   }
 }

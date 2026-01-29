@@ -16,6 +16,8 @@ import { NoteVersionHistorySheet } from './NoteVersionHistorySheet';
 import { NoteLinkingSheet } from './NoteLinkingSheet';
 import { NoteTableOfContents, injectHeadingIds } from './NoteTableOfContents';
 import { InputSheetPage } from './InputSheetPage';
+import { VoiceRecorder } from './VoiceRecorder';
+import { AudioPlayer } from './AudioPlayer';
 import { useHardwareBackButton } from '@/hooks/useHardwareBackButton';
 import { sanitizeForDisplay } from '@/lib/sanitize';
 
@@ -23,7 +25,7 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { PatternSetupSheet } from './PatternSetupSheet';
 import { PatternUnlockSheet } from './PatternUnlockSheet';
 import { hasPatternLock, removePatternLock } from '@/utils/patternLock';
-import { ArrowLeft, Folder as FolderIcon, Plus, CalendarIcon, History, FileDown, Link2, ChevronDown, FileText, BookOpen, BarChart3, MoreVertical, Mic, Share2, Search, Image, Table, Minus, SeparatorHorizontal, MessageSquare, FileSymlink, FileType, Bell, Clock, Repeat, Grid3X3, LockOpen } from 'lucide-react';
+import { ArrowLeft, Folder as FolderIcon, Plus, CalendarIcon, History, FileDown, Link2, ChevronDown, FileText, BookOpen, BarChart3, MoreVertical, Mic, Share2, Search, Image, Table, Minus, SeparatorHorizontal, MessageSquare, FileSymlink, FileType, Bell, Clock, Repeat, Grid3X3, LockOpen, Trash2 } from 'lucide-react';
 import { exportNoteToPdf, getPageBreakCount } from '@/utils/exportToPdf';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -152,12 +154,26 @@ export const NoteEditor = ({ note, isOpen, onClose, onSave, defaultType = 'regul
   const [showPatternSetup, setShowPatternSetup] = useState(false);
   const [showPatternChange, setShowPatternChange] = useState(false);
   
+  // Voice recorder state
+  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+  
   // Input sheet page states (replaces window.prompt)
   const [isLinkInputOpen, setIsLinkInputOpen] = useState(false);
   const [isCommentInputOpen, setIsCommentInputOpen] = useState(false);
   const [isMetaDescInputOpen, setIsMetaDescInputOpen] = useState(false);
   
   const editorRef = useRef<HTMLDivElement>(null);
+  
+  // Handle voice recording completion
+  const handleVoiceRecordingComplete = useCallback((audioBlob: Blob, audioUrl: string, duration: number) => {
+    const newRecording: VoiceRecording = {
+      id: `voice-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      audioUrl,
+      duration,
+      timestamp: new Date(),
+    };
+    setVoiceRecordings(prev => [...prev, newRecording]);
+  }, []);
   
   // Calculate stats
   const noteStats = calculateNoteStats(content, title);
@@ -1099,7 +1115,79 @@ export const NoteEditor = ({ note, isOpen, onClose, onSave, defaultType = 'regul
       {/* Full Page Content Editor */}
       <div className="flex-1 min-h-0 overflow-hidden">
         <ErrorBoundary>
-          {noteType === 'code' ? (
+          {noteType === 'voice' ? (
+            <div className="h-full flex flex-col overflow-y-auto">
+              {/* Title input for voice note */}
+              <div className="px-4 pt-4 pb-2">
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder={t('notes.untitled', 'Untitled Voice Note')}
+                  className="w-full text-xl font-semibold bg-transparent border-none outline-none placeholder:text-muted-foreground"
+                />
+              </div>
+              
+              {/* Voice recordings list */}
+              {voiceRecordings.length > 0 ? (
+                <div className="flex-1 px-4 pb-4 space-y-3 overflow-y-auto">
+                  {voiceRecordings.map((recording, index) => (
+                    <div key={recording.id} className="relative">
+                      <AudioPlayer src={recording.audioUrl} />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={() => {
+                          setVoiceRecordings(prev => prev.filter(r => r.id !== recording.id));
+                          URL.revokeObjectURL(recording.audioUrl);
+                        }}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                  
+                  {/* Add more recordings button */}
+                  <Button
+                    variant="outline"
+                    className="w-full mt-4"
+                    onClick={() => setShowVoiceRecorder(true)}
+                  >
+                    <Mic className="h-4 w-4 mr-2" />
+                    {t('voice.addRecording', 'Add Recording')}
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex-1 flex items-center justify-center">
+                  <VoiceRecorder
+                    onRecordingComplete={handleVoiceRecordingComplete}
+                    autoStart={!note}
+                  />
+                </div>
+              )}
+              
+              {/* Voice recorder sheet for adding more */}
+              {showVoiceRecorder && (
+                <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center">
+                  <div className="w-full max-w-md p-4">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="font-semibold">{t('voice.newRecording', 'New Recording')}</h3>
+                      <Button variant="ghost" size="icon" onClick={() => setShowVoiceRecorder(false)}>
+                        <ArrowLeft className="h-5 w-5" />
+                      </Button>
+                    </div>
+                    <VoiceRecorder
+                      onRecordingComplete={(blob, url, duration) => {
+                        handleVoiceRecordingComplete(blob, url, duration);
+                        setShowVoiceRecorder(false);
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : noteType === 'code' ? (
             <VirtualizedCodeEditor
               code={codeContent}
               onChange={setCodeContent}
