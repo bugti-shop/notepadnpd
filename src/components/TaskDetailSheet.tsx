@@ -388,22 +388,36 @@ export const TaskDetailSheet = ({ isOpen, task, onClose, onUpdate, onDelete, onD
                         className={cn("space-y-2 transition-colors rounded-lg", snapshot.isDraggingOver && "bg-muted/20 p-2")}
                       >
                         {task.subtasks!.map((subtask, index) => (
-                          <Draggable key={subtask.id} draggableId={subtask.id} index={index}>
+                          <Draggable key={subtask.id} draggableId={`sheet-${subtask.id}`} index={index}>
                             {(provided, snapshot) => (
                               <div
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 className={cn(
-                                  "flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-all group relative",
-                                  snapshot.isDragging && "shadow-lg scale-105 rotate-1 ring-2 ring-primary/20"
+                                  "flex items-start gap-2 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-all group relative",
+                                  snapshot.isDragging && "shadow-lg scale-105 ring-2 ring-primary/20 z-50"
                                 )}
                               >
+                                {/* Visible drag handle */}
+                                <div 
+                                  {...provided.dragHandleProps} 
+                                  className="flex items-center justify-center w-6 h-6 cursor-grab active:cursor-grabbing touch-none shrink-0 text-muted-foreground/50 hover:text-muted-foreground"
+                                >
+                                  <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                                    <circle cx="3" cy="2" r="1.5"/>
+                                    <circle cx="9" cy="2" r="1.5"/>
+                                    <circle cx="3" cy="6" r="1.5"/>
+                                    <circle cx="9" cy="6" r="1.5"/>
+                                    <circle cx="3" cy="10" r="1.5"/>
+                                    <circle cx="9" cy="10" r="1.5"/>
+                                  </svg>
+                                </div>
                                 <Checkbox
                                   checked={subtask.completed}
                                   onCheckedChange={() => handleToggleSubtask(subtask.id)}
                                   className={cn("mt-0.5 h-5 w-5 rounded-full border-2", subtask.completed && "bg-primary border-primary")}
                                 />
-                                <div {...provided.dragHandleProps} className="flex-1 min-w-0 cursor-grab active:cursor-grabbing">
+                                <div className="flex-1 min-w-0">
                                   <p className={cn("text-sm font-medium", subtask.completed && "line-through opacity-60")}>
                                     {subtask.text}
                                   </p>
