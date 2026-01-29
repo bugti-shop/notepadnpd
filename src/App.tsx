@@ -67,27 +67,58 @@ const DashboardTracker = () => {
   return null;
 };
 
-// Root redirect component that checks last dashboard - renders Index immediately to prevent freeze
+// Root redirect component that checks last dashboard and redirects accordingly
 const RootRedirect = () => {
   const navigate = useNavigate();
-  const [isChecked, setIsChecked] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const [shouldShowNotes, setShouldShowNotes] = useState(true);
   
   useEffect(() => {
+    let isMounted = true;
+    
     const checkLastDashboard = async () => {
       try {
         const lastDashboard = await getSetting<string>('lastDashboard', 'notes');
+        console.log('[RootRedirect] Last dashboard:', lastDashboard);
+        
+        if (!isMounted) return;
+        
         if (lastDashboard === 'todo') {
+          // Navigate to todo immediately
           navigate('/todo/today', { replace: true });
+          return; // Don't set ready, navigation will unmount this
         }
+        
+        // Show notes dashboard
+        setShouldShowNotes(true);
+        setIsReady(true);
       } catch (e) {
         console.warn('Failed to check last dashboard:', e);
+        if (isMounted) {
+          setShouldShowNotes(true);
+          setIsReady(true);
+        }
       }
-      setIsChecked(true);
     };
+    
     checkLastDashboard();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [navigate]);
   
-  // Always render Index immediately to prevent blank screen/freeze
+  // Show minimal loading while checking (very fast, usually imperceptible)
+  if (!isReady) {
+    return (
+      <div className="min-h-screen min-h-screen-dynamic bg-background flex items-center justify-center">
+        <div className="animate-pulse">
+          <img src="/nota-logo.png" alt="Npd" className="h-16 w-16 opacity-50" />
+        </div>
+      </div>
+    );
+  }
+  
   return <Index />;
 };
 
