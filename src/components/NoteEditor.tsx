@@ -20,7 +20,10 @@ import { useHardwareBackButton } from '@/hooks/useHardwareBackButton';
 import { sanitizeForDisplay } from '@/lib/sanitize';
 
 import { ErrorBoundary } from './ErrorBoundary';
-import { ArrowLeft, Folder as FolderIcon, Plus, CalendarIcon, History, FileDown, Link2, ChevronDown, FileText, BookOpen, BarChart3, MoreVertical, Mic, Share2, Search, Image, Table, Minus, SeparatorHorizontal, MessageSquare, FileSymlink, FileType, Bell, Clock, Repeat } from 'lucide-react';
+import { PatternSetupSheet } from './PatternSetupSheet';
+import { PatternUnlockSheet } from './PatternUnlockSheet';
+import { hasPatternLock, removePatternLock } from '@/utils/patternLock';
+import { ArrowLeft, Folder as FolderIcon, Plus, CalendarIcon, History, FileDown, Link2, ChevronDown, FileText, BookOpen, BarChart3, MoreVertical, Mic, Share2, Search, Image, Table, Minus, SeparatorHorizontal, MessageSquare, FileSymlink, FileType, Bell, Clock, Repeat, Grid3X3, LockOpen } from 'lucide-react';
 import { exportNoteToPdf, getPageBreakCount } from '@/utils/exportToPdf';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -144,6 +147,11 @@ export const NoteEditor = ({ note, isOpen, onClose, onSave, defaultType = 'regul
   const [isFindReplaceOpen, setIsFindReplaceOpen] = useState(false);
   const [metaDescription, setMetaDescription] = useState<string>('');
   
+  // Pattern lock states
+  const [isPatternLocked, setIsPatternLocked] = useState(false);
+  const [showPatternSetup, setShowPatternSetup] = useState(false);
+  const [showPatternChange, setShowPatternChange] = useState(false);
+  
   // Input sheet page states (replaces window.prompt)
   const [isLinkInputOpen, setIsLinkInputOpen] = useState(false);
   const [isCommentInputOpen, setIsCommentInputOpen] = useState(false);
@@ -203,6 +211,9 @@ export const NoteEditor = ({ note, isOpen, onClose, onSave, defaultType = 'regul
       setCodeContent(note.codeContent || '');
       setCodeLanguage(note.codeLanguage || 'auto');
       setMetaDescription(note.metaDescription || '');
+      
+      // Check pattern lock status
+      hasPatternLock(note.id).then(setIsPatternLocked);
     } else {
       // Reset draft ID for new notes to prevent overwriting
       draftIdRef.current = null;
@@ -990,6 +1001,59 @@ export const NoteEditor = ({ note, isOpen, onClose, onSave, defaultType = 'regul
                     {t('editor.versionHistory')}
                   </DropdownMenuItem>
                 )}
+                
+                {/* Pattern Lock Option */}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (note) {
+                      if (isPatternLocked) {
+                        setShowPatternChange(true);
+                      } else {
+                        setShowPatternSetup(true);
+                      }
+                    } else {
+                      toast.info(t('editor.saveFirstToLock', 'Save the note first to add pattern lock'));
+                    }
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    if (note) {
+                      if (isPatternLocked) {
+                        setShowPatternChange(true);
+                      } else {
+                        setShowPatternSetup(true);
+                      }
+                    } else {
+                      toast.info(t('editor.saveFirstToLock', 'Save the note first to add pattern lock'));
+                    }
+                  }}
+                >
+                  <Grid3X3 className="h-4 w-4 mr-2" />
+                  {isPatternLocked 
+                    ? t('editor.changePatternLock', 'Change Pattern Lock')
+                    : t('editor.addPatternLock', 'Add Pattern Lock')
+                  }
+                </DropdownMenuItem>
+                {isPatternLocked && note && (
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      await removePatternLock(note.id);
+                      setIsPatternLocked(false);
+                      toast.success(t('editor.patternRemoved', 'Pattern lock removed'));
+                    }}
+                    onTouchEnd={async (e) => {
+                      e.preventDefault();
+                      await removePatternLock(note.id);
+                      setIsPatternLocked(false);
+                      toast.success(t('editor.patternRemoved', 'Pattern lock removed'));
+                    }}
+                    className="text-destructive"
+                  >
+                    <LockOpen className="h-4 w-4 mr-2" />
+                    {t('editor.removePatternLock', 'Remove Pattern Lock')}
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -1244,6 +1308,24 @@ export const NoteEditor = ({ note, isOpen, onClose, onSave, defaultType = 'regul
         maxLength={160}
         multiline
       />
+
+      {/* Pattern Lock Setup Sheet */}
+      {note && (
+        <PatternSetupSheet
+          isOpen={showPatternSetup || showPatternChange}
+          onClose={() => {
+            setShowPatternSetup(false);
+            setShowPatternChange(false);
+          }}
+          noteId={note.id}
+          onPatternSet={() => {
+            setIsPatternLocked(true);
+            setShowPatternSetup(false);
+            setShowPatternChange(false);
+            toast.success(t('editor.patternSet', 'Pattern lock set successfully'));
+          }}
+        />
+      )}
     </div>
   );
 };
