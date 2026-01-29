@@ -116,6 +116,34 @@ export const TaskDetailPage = ({
       } else {
         setResolvedAudioUrl(null);
       }
+      
+      // Initialize repeat settings from task's repeatType and advancedRepeat
+      if (task.repeatType && task.repeatType !== 'none') {
+        const frequencyMap: Record<string, RepeatSettings['frequency']> = {
+          'hourly': 'hour',
+          'daily': 'daily',
+          'weekly': 'weekly',
+          'weekdays': 'weekly',
+          'weekends': 'weekly',
+          'monthly': 'monthly',
+          'yearly': 'yearly',
+          'custom': 'weekly',
+        };
+        
+        const frequency = task.advancedRepeat?.frequency 
+          ? (frequencyMap[task.advancedRepeat.frequency] || 'daily')
+          : (frequencyMap[task.repeatType] || 'daily');
+        
+        setRepeatSettings({
+          frequency,
+          interval: task.advancedRepeat?.interval || 1,
+          endsType: 'never',
+          weeklyDays: task.repeatDays || task.advancedRepeat?.weeklyDays,
+          monthlyDay: task.advancedRepeat?.monthlyDay,
+        });
+      } else {
+        setRepeatSettings(undefined);
+      }
     }
   }, [task]);
 

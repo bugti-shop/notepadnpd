@@ -11,13 +11,14 @@ import { SyncBadge } from '@/components/SyncStatusIndicator';
 import { MasonryNotesGrid } from '@/components/MasonryNotesGrid';
 import { VirtualizedNotesGrid, VirtualizedNotesList, shouldVirtualizeNotes } from '@/components/VirtualizedNotesGrid';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
+import { useNoteTypeVisibility } from '@/hooks/useNoteTypeVisibility';
 import { syncManager } from '@/utils/syncManager';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, StickyNote, FileText, FileEdit, Pen, ListTodo, Bell, Clock, Repeat, FileCode, GitBranch, Sun, Moon, Receipt, Star, ArrowUpDown, MoreVertical, FolderPlus, CheckSquare, Trash2, Archive, X, RotateCcw, Copy, Folder as FolderIcon } from 'lucide-react';
+import { Search, Plus, StickyNote, FileText, FileEdit, Pen, ListTodo, Bell, Clock, Repeat, FileCode, GitBranch, Sun, Moon, Receipt, Star, ArrowUpDown, MoreVertical, FolderPlus, CheckSquare, Trash2, Archive, X, RotateCcw, Copy, Folder as FolderIcon, Eye, EyeOff } from 'lucide-react';
 import { getAllUpcomingReminders } from '@/utils/noteNotifications';
 import { format, isToday, isTomorrow, differenceInDays } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -35,6 +36,7 @@ import { saveNoteToDBSingle, deleteNoteFromDB, saveNotesToDB } from '@/utils/not
 import { getSetting, setSetting } from '@/utils/settingsStorage';
 import { logActivity } from '@/utils/activityLogger';
 import { useNotes } from '@/contexts/NotesContext';
+import { NoteTypeVisibilitySheet } from '@/components/NoteTypeVisibilitySheet';
 
 const Index = () => {
   const { t } = useTranslation();
@@ -43,6 +45,10 @@ const Index = () => {
   
   // Use global notes context - no more local loading!
   const { notes, setNotes, isLoading: notesLoading } = useNotes();
+  
+  // Note type visibility
+  const { visibleTypes, isTypeVisible, filterNotesByVisibility } = useNoteTypeVisibility();
+  const [showNoteTypeVisibilitySheet, setShowNoteTypeVisibilitySheet] = useState(false);
   
   const [folders, setFolders] = useState<Folder[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -421,6 +427,7 @@ const Index = () => {
       !note.isDeleted && 
       !note.isArchived &&
       !note.isHidden && // Hide hidden notes from main view
+      isTypeVisible(note.type) && // Filter by visible note types
       (note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       note.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (note.metaDescription && note.metaDescription.toLowerCase().includes(searchQuery.toLowerCase())))
@@ -436,7 +443,7 @@ const Index = () => {
     allFilteredNotes = allFilteredNotes.filter(note => note.isFavorite);
   }
 
-  // Filter by note type
+  // Filter by specific note type (user selection, in addition to visibility)
   if (filterByType) {
     allFilteredNotes = allFilteredNotes.filter(note => note.type === filterByType);
   }
@@ -1169,6 +1176,12 @@ const Index = () => {
       )}
 
       <BottomNavigation />
+      
+      {/* Note Type Visibility Sheet */}
+      <NoteTypeVisibilitySheet
+        isOpen={showNoteTypeVisibilitySheet}
+        onClose={() => setShowNoteTypeVisibilitySheet(false)}
+      />
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import { BottomNavigation } from '@/components/BottomNavigation';
-import { ChevronRight, Settings as SettingsIcon, Crown, CreditCard, Palette, Check, Clock, Vibrate, ExternalLink, Globe, Bell } from 'lucide-react';
+import { ChevronRight, Settings as SettingsIcon, Crown, CreditCard, Palette, Check, Clock, Vibrate, ExternalLink, Globe, Bell, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -15,6 +15,7 @@ import { loadNotesFromDB, saveNotesToDB } from '@/utils/noteStorage';
 import { getSetting, setSetting, getAllSettings, clearAllSettings } from '@/utils/settingsStorage';
 import { persistentNotificationManager } from '@/utils/persistentNotification';
 import { Switch } from '@/components/ui/switch';
+import { NoteTypeVisibilitySheet } from '@/components/NoteTypeVisibilitySheet';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,6 +49,7 @@ const Settings = () => {
   const [showThemeDialog, setShowThemeDialog] = useState(false);
   const [showHapticDialog, setShowHapticDialog] = useState(false);
   const [showLanguageDialog, setShowLanguageDialog] = useState(false);
+  const [showNoteTypeVisibilitySheet, setShowNoteTypeVisibilitySheet] = useState(false);
   const [hapticIntensity, setHapticIntensity] = useState<'off' | 'light' | 'medium' | 'heavy'>('medium');
   const [isRestoring, setIsRestoring] = useState(false);
   const [persistentNotificationEnabled, setPersistentNotificationEnabled] = useState(false);
@@ -401,6 +403,30 @@ const Settings = () => {
             </div>
           )}
 
+          {/* Note Type Visibility */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 px-4 py-3">
+              <Eye className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground text-sm font-medium">
+                {t('settings.noteTypes', 'Note Types')}
+              </span>
+            </div>
+            <button
+              onClick={() => setShowNoteTypeVisibilitySheet(true)}
+              className="w-full flex items-center justify-between px-4 py-3 border-b border-border hover:bg-muted transition-colors"
+            >
+              <div className="flex flex-col gap-0.5">
+                <span className="text-foreground text-sm">
+                  {t('settings.noteTypeVisibility', 'Note Type Visibility')}
+                </span>
+                <span className="text-muted-foreground text-xs">
+                  {t('settings.noteTypeVisibilityDesc', 'Show or hide note types')}
+                </span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
+          </div>
+
           {/* Integrations & Import */}
           <div className="space-y-1">
             <button
@@ -742,6 +768,11 @@ const Settings = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Note Type Visibility Sheet */}
+      <NoteTypeVisibilitySheet
+        isOpen={showNoteTypeVisibilitySheet}
+        onClose={() => setShowNoteTypeVisibilitySheet(false)}
+      />
 
     </div>
   );
