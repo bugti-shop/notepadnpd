@@ -13,6 +13,7 @@ import { NotesProvider } from "@/contexts/NotesContext";
 import OnboardingFlow from "@/components/OnboardingFlow";
 import { NavigationLoader } from "@/components/NavigationLoader";
 import { PersistentNotificationHandler } from "@/components/PersistentNotificationHandler";
+import AppPatternGate from "@/components/AppPatternGate";
 import Index from "./pages/Index";
 import Notes from "./pages/Notes";
 import NotesCalendar from "./pages/NotesCalendar";
@@ -151,7 +152,9 @@ const App = () => (
             <NotesProvider>
               <WelcomeProvider>
                 <SubscriptionProvider>
-                  <AppContent />
+                  <AppPatternGate>
+                    <AppContent />
+                  </AppPatternGate>
                 </SubscriptionProvider>
               </WelcomeProvider>
             </NotesProvider>
