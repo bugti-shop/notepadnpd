@@ -37,6 +37,9 @@ import { getSetting, setSetting } from '@/utils/settingsStorage';
 import { logActivity } from '@/utils/activityLogger';
 import { useNotes } from '@/contexts/NotesContext';
 import { NoteTypeVisibilitySheet } from '@/components/NoteTypeVisibilitySheet';
+import { PatternSetupSheet } from '@/components/PatternSetupSheet';
+import { PatternUnlockSheet } from '@/components/PatternUnlockSheet';
+import { hasPatternLock } from '@/utils/patternLock';
 
 const Index = () => {
   const { t } = useTranslation();
@@ -68,6 +71,11 @@ const Index = () => {
   const [showBulkFolderSheet, setShowBulkFolderSheet] = useState(false);
   const { isOnline, isSyncing, hasError, lastSync } = useRealtimeSync();
   const syncEnabled = syncManager.isSyncEnabled();
+  
+  // Pattern Lock state
+  const [patternSetupNoteId, setPatternSetupNoteId] = useState<string | null>(null);
+  const [patternUnlockNoteId, setPatternUnlockNoteId] = useState<string | null>(null);
+  const [unlockedNotes, setUnlockedNotes] = useState<Set<string>>(new Set());
 
   // Load all preferences from IndexedDB
   useEffect(() => {
@@ -373,9 +381,34 @@ const Index = () => {
     setIsEditorOpen(true);
   };
 
-  const handleEditNote = (note: Note) => {
+  const handleEditNote = async (note: Note) => {
+    // Check if note has pattern lock and is not already unlocked
+    const isLocked = await hasPatternLock(note.id);
+    if (isLocked && !unlockedNotes.has(note.id)) {
+      // Show pattern unlock sheet
+      setPatternUnlockNoteId(note.id);
+      return;
+    }
+    
     setSelectedNote(note);
     setIsEditorOpen(true);
+  };
+  
+  const handlePatternUnlocked = () => {
+    if (patternUnlockNoteId) {
+      // Add to unlocked notes set (session only - cleared on app restart)
+      setUnlockedNotes(prev => new Set(prev).add(patternUnlockNoteId));
+      // Now open the note
+      const note = notes.find(n => n.id === patternUnlockNoteId);
+      if (note) {
+        setSelectedNote(note);
+        setIsEditorOpen(true);
+      }
+    }
+  };
+  
+  const handlePatternLock = (noteId: string) => {
+    setPatternSetupNoteId(noteId);
   };
 
   const handleCreateFolder = (name: string, color: string) => {
@@ -1059,6 +1092,7 @@ const Index = () => {
                           isSelected={selectedNoteIds.includes(note.id)}
                           onToggleSelection={handleToggleNoteSelection}
                           onDuplicate={handleDuplicateNote}
+                          onPatternLock={handlePatternLock}
                         />
                       ))}
                     </div>
@@ -1108,6 +1142,7 @@ const Index = () => {
                             isSelected={selectedNoteIds.includes(note.id)}
                             onToggleSelection={handleToggleNoteSelection}
                             onDuplicate={handleDuplicateNote}
+                            onPatternLock={handlePatternLock}
                           />
                         ))}
                       </div>
@@ -1181,6 +1216,25 @@ const Index = () => {
       <NoteTypeVisibilitySheet
         isOpen={showNoteTypeVisibilitySheet}
         onClose={() => setShowNoteTypeVisibilitySheet(false)}
+      />
+      
+      {/* Pattern Lock Setup Sheet */}
+      <PatternSetupSheet
+        isOpen={!!patternSetupNoteId}
+        onClose={() => setPatternSetupNoteId(null)}
+        noteId={patternSetupNoteId || ''}
+        onPatternSet={() => {
+          // Refresh the note cards to show lock status
+          setPatternSetupNoteId(null);
+        }}
+      />
+      
+      {/* Pattern Unlock Sheet */}
+      <PatternUnlockSheet
+        isOpen={!!patternUnlockNoteId}
+        onClose={() => setPatternUnlockNoteId(null)}
+        noteId={patternUnlockNoteId || ''}
+        onUnlocked={handlePatternUnlocked}
       />
     </div>
   );
