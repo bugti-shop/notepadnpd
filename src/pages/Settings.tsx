@@ -400,6 +400,12 @@ const Settings = () => {
                   onCheckedChange={handlePersistentNotificationToggle}
                 />
               </div>
+              {persistentNotificationEnabled && (
+                <div className="px-4 py-2 text-xs text-muted-foreground bg-muted/30 border-b border-border">
+                  <p>📝 Tap "Add Note" to quickly create any note type (Text, Lined, Sticky, Code, or Sketch)</p>
+                  <p className="mt-1">✅ Tap "Add Task" to add a task without opening the app</p>
+                </div>
+              )}
             </div>
           )}
 

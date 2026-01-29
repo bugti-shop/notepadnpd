@@ -127,23 +127,20 @@ export const FolderManager = ({
   };
 
   const handleFolderClick = (folderId: string) => {
+    // Immediate folder selection - no delay for instant response
+    onSelectFolder(folderId);
+  };
+
+  // Long press to show actions (separate from click)
+  const handleFolderLongPress = (folderId: string) => {
+    setShowActionsForFolder(folderId);
+    // Auto-hide after 3 seconds
     if (clickTimeoutRef.current) {
       clearTimeout(clickTimeoutRef.current);
     }
-
-    const currentCount = (folderClickCounts[folderId] || 0) + 1;
-    setFolderClickCounts(prev => ({ ...prev, [folderId]: currentCount }));
-
-    onSelectFolder(folderId);
-
-    if (currentCount >= CLICKS_TO_SHOW_ACTIONS) {
-      setShowActionsForFolder(folderId);
-    }
-
     clickTimeoutRef.current = setTimeout(() => {
-      setFolderClickCounts(prev => ({ ...prev, [folderId]: 0 }));
       setShowActionsForFolder(null);
-    }, 1500);
+    }, 3000);
   };
 
   const handleSelectAllNotes = () => {
@@ -535,9 +532,27 @@ export const FolderManager = ({
             ) : (
               <button
                 onClick={() => handleFolderClick(folder.id)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  handleFolderLongPress(folder.id);
+                }}
+                onTouchStart={(e) => {
+                  const timer = setTimeout(() => handleFolderLongPress(folder.id), 500);
+                  (e.currentTarget as any)._longPressTimer = timer;
+                }}
+                onTouchEnd={(e) => {
+                  if ((e.currentTarget as any)._longPressTimer) {
+                    clearTimeout((e.currentTarget as any)._longPressTimer);
+                  }
+                }}
+                onTouchMove={(e) => {
+                  if ((e.currentTarget as any)._longPressTimer) {
+                    clearTimeout((e.currentTarget as any)._longPressTimer);
+                  }
+                }}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, folder.id)}
-                className="flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-all"
+                className="flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-all active:scale-95"
                 style={{
                   backgroundColor: selectedFolderId === folder.id ? folder.color : 'hsl(var(--muted))',
                   color: selectedFolderId === folder.id ? '#ffffff' : 'hsl(var(--foreground))',

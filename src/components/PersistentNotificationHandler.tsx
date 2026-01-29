@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FileText, Code, PenLine, StickyNote, X } from 'lucide-react';
+import { FileText, Code, PenLine, StickyNote, Paintbrush, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNotes } from '@/contexts/NotesContext';
 import { Note, NoteType, TodoItem } from '@/types/note';
@@ -25,6 +25,7 @@ export const PersistentNotificationHandler = () => {
     { type: 'lined', icon: <PenLine className="h-5 w-5" />, label: t('notes.linedNote', 'Lined Note') },
     { type: 'sticky', icon: <StickyNote className="h-5 w-5" />, label: t('notes.stickyNote', 'Sticky Note') },
     { type: 'code', icon: <Code className="h-5 w-5" />, label: t('notes.codeNote', 'Code Note') },
+    { type: 'sketch', icon: <Paintbrush className="h-5 w-5" />, label: t('notes.sketchNote', 'Sketch Note') },
   ];
 
   useEffect(() => {
