@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, StickyNote, FileText, FileEdit, Pen, ListTodo, Bell, Clock, Repeat, FileCode, GitBranch, Sun, Moon, Receipt, Star, ArrowUpDown, MoreVertical, FolderPlus, CheckSquare, Trash2, Archive, X, RotateCcw, Copy, Folder as FolderIcon, Eye, EyeOff } from 'lucide-react';
+import { Search, Plus, StickyNote, FileText, FileEdit, Pen, ListTodo, Bell, Clock, Repeat, FileCode, GitBranch, Sun, Moon, Receipt, Star, ArrowUpDown, MoreVertical, FolderPlus, CheckSquare, Trash2, Archive, X, RotateCcw, Copy, Folder as FolderIcon, Eye, EyeOff, Mic } from 'lucide-react';
 import { getAllUpcomingReminders } from '@/utils/noteNotifications';
 import { format, isToday, isTomorrow, differenceInDays } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -1213,6 +1213,13 @@ const Index = () => {
               <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('code'); }} className="gap-2">
                 <FileCode className="h-4 w-4 text-orange-500" />
                 {t('notes.noteTypes.code')}
+              </DropdownMenuItem>
+            )}
+            {isTypeVisible('code') && isTypeVisible('voice') && <DropdownMenuSeparator />}
+            {isTypeVisible('voice') && (
+              <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('voice'); }} className="gap-2">
+                <Mic className="h-4 w-4 text-red-500" />
+                {t('notes.noteTypes.voice')}
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>

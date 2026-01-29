@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NotesCalendarView } from '@/components/NotesCalendarView';
-import { Calendar as CalendarIcon, Plus, StickyNote, FileText, FileEdit, Pen, Filter, FileCode, GitBranch, Sun, Moon } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, StickyNote, FileText, FileEdit, Pen, Filter, FileCode, GitBranch, Sun, Moon, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { NoteEditor } from '@/components/NoteEditor';
 import { Note, Folder, NoteType } from '@/types/note';
@@ -110,6 +110,7 @@ const NotesCalendar = () => {
     regular: { label: t('notesMenu.regular'), icon: FileEdit },
     sketch: { label: t('notesMenu.sketch'), icon: Pen },
     code: { label: t('notesMenu.code'), icon: FileCode },
+    voice: { label: t('notes.noteTypes.voice', 'Voice Note'), icon: Mic },
   };
 
   const handleDeleteNote = async (noteId: string) => {

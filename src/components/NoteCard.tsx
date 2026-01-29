@@ -207,6 +207,11 @@ export const NoteCard = ({ note, onEdit, onDelete, onArchive, onTogglePin, onTog
   const cardStyle = { backgroundColor: getCardColor() };
 
   const getTypeBadge = () => {
+    // Check for voice note type first
+    if (note.type === 'voice') {
+      return { icon: Mic, label: 'Voice' };
+    }
+    // Also show mic badge if any voice recordings exist
     if (note.voiceRecordings && note.voiceRecordings.length > 0) {
       return { icon: Mic, label: 'Audio File' };
     }
