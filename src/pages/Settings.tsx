@@ -1,5 +1,5 @@
 import { BottomNavigation } from '@/components/BottomNavigation';
-import { ChevronRight, Settings as SettingsIcon, Crown, CreditCard, Palette, Check, Clock, Vibrate, ExternalLink, Globe, Bell, Eye } from 'lucide-react';
+import { ChevronRight, Settings as SettingsIcon, Crown, CreditCard, Palette, Check, Clock, Vibrate, ExternalLink, Globe, Bell, Eye, Grid3X3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +16,8 @@ import { getSetting, setSetting, getAllSettings, clearAllSettings } from '@/util
 import { persistentNotificationManager } from '@/utils/persistentNotification';
 import { Switch } from '@/components/ui/switch';
 import { NoteTypeVisibilitySheet } from '@/components/NoteTypeVisibilitySheet';
+import { GlobalPatternSetupSheet } from '@/components/GlobalPatternSetupSheet';
+import { hasGlobalPatternLock, isGlobalPatternLockEnabled } from '@/utils/patternLock';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,14 +52,17 @@ const Settings = () => {
   const [showHapticDialog, setShowHapticDialog] = useState(false);
   const [showLanguageDialog, setShowLanguageDialog] = useState(false);
   const [showNoteTypeVisibilitySheet, setShowNoteTypeVisibilitySheet] = useState(false);
+  const [showGlobalPatternSheet, setShowGlobalPatternSheet] = useState(false);
   const [hapticIntensity, setHapticIntensity] = useState<'off' | 'light' | 'medium' | 'heavy'>('medium');
   const [isRestoring, setIsRestoring] = useState(false);
   const [persistentNotificationEnabled, setPersistentNotificationEnabled] = useState(false);
+  const [hasGlobalPattern, setHasGlobalPattern] = useState(false);
 
   // Load haptic intensity and persistent notification state from IndexedDB
   useEffect(() => {
     getSetting<'off' | 'light' | 'medium' | 'heavy'>('haptic_intensity', 'medium').then(setHapticIntensity);
     persistentNotificationManager.isEnabled().then(setPersistentNotificationEnabled);
+    hasGlobalPatternLock().then(setHasGlobalPattern);
   }, []);
 
   const handlePersistentNotificationToggle = async (enabled: boolean) => {
@@ -433,6 +438,33 @@ const Settings = () => {
             </button>
           </div>
 
+          {/* Global Pattern Lock */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 px-4 py-3">
+              <Grid3X3 className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground text-sm font-medium">
+                {t('settings.security', 'Security')}
+              </span>
+            </div>
+            <button
+              onClick={() => setShowGlobalPatternSheet(true)}
+              className="w-full flex items-center justify-between px-4 py-3 border-b border-border hover:bg-muted transition-colors"
+            >
+              <div className="flex flex-col gap-0.5">
+                <span className="text-foreground text-sm">
+                  {t('settings.appPatternLock', 'App Pattern Lock')}
+                </span>
+                <span className="text-muted-foreground text-xs">
+                  {hasGlobalPattern 
+                    ? t('settings.patternEnabled', 'Pattern lock enabled for all notes')
+                    : t('settings.patternDisabled', 'Protect all notes with one pattern')
+                  }
+                </span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
+          </div>
+
           {/* Integrations & Import */}
           <div className="space-y-1">
             <button
@@ -778,6 +810,13 @@ const Settings = () => {
       <NoteTypeVisibilitySheet
         isOpen={showNoteTypeVisibilitySheet}
         onClose={() => setShowNoteTypeVisibilitySheet(false)}
+      />
+
+      {/* Global Pattern Lock Setup Sheet */}
+      <GlobalPatternSetupSheet
+        isOpen={showGlobalPatternSheet}
+        onClose={() => setShowGlobalPatternSheet(false)}
+        onPatternSet={() => hasGlobalPatternLock().then(setHasGlobalPattern)}
       />
 
     </div>
