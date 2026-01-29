@@ -34,7 +34,7 @@ export const TodoBottomNavigation = () => {
         transform: 'translateZ(0)',
       }}
     >
-      <div className="grid grid-cols-5 h-14 sm:h-16 max-w-screen-lg mx-auto">
+      <div className="grid grid-cols-5 h-12 sm:h-14 max-w-screen-lg mx-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;

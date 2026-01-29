@@ -2026,6 +2026,7 @@ const Today = () => {
                                             className={cn("bg-card rounded-lg border border-border/50 shadow-sm", snapshot.isDragging && "shadow-lg ring-2 ring-primary")}
                                           >
                                             {renderTaskItem(item)}
+                                            {renderSubtasksInline(item)}
                                           </div>
                                         )}
                                       </Draggable>
@@ -2333,6 +2334,7 @@ const Today = () => {
                                         {(provided, snapshot) => (
                                           <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className={cn("bg-card rounded-lg border border-border/50", snapshot.isDragging && "shadow-lg ring-2 ring-primary")}>
                                             {renderTaskItem(item)}
+                                            {renderSubtasksInline(item)}
                                           </div>
                                         )}
                                       </Draggable>
@@ -2801,7 +2803,8 @@ const Today = () => {
                         )}
                         style={{ 
                           transform: `translateX(${currentSubtaskSwipe?.x || 0}px)`, 
-                          transition: currentSubtaskSwipe?.isSwiping ? 'none' : 'transform 0.3s ease-out' 
+                          transition: currentSubtaskSwipe?.isSwiping ? 'none' : 'transform 0.3s ease-out',
+                          borderLeft: `3px solid ${subtask.priority === 'high' ? '#ef4444' : subtask.priority === 'medium' ? '#f97316' : subtask.priority === 'low' ? '#22c55e' : '#6b7280'}`
                         }}
                         onClick={() => !currentSubtaskSwipe?.isSwiping && setSelectedSubtask({ subtask, parentId })}
                         onTouchStart={(e) => handleSubtaskSwipeStart(subtask.id, parentId, e)}
@@ -2818,10 +2821,10 @@ const Today = () => {
                           className={cn(
                             "rounded-sm mt-0.5 flex-shrink-0",
                             compactMode ? "h-3.5 w-3.5" : "h-4 w-4",
-                            subtask.completed ? "bg-muted-foreground/30 border-0" : "border-2 border-muted-foreground/40"
+                            subtask.completed ? "bg-muted-foreground/30 border-0" : cn("border-2", getPriorityBorderColor(subtask.priority))
                           )}
                         />
-                        <span className={cn("flex-1", compactMode ? "text-xs" : "text-sm", subtask.completed && "text-muted-foreground")}>
+                        <span className={cn("flex-1", compactMode ? "text-xs" : "text-sm", subtask.completed && "text-muted-foreground line-through")}>
                           {subtask.text}
                         </span>
                       </div>
