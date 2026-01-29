@@ -274,40 +274,108 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
   }, [startBackgroundSync, refreshAccessToken]);
 
+  // Helper to parse various response formats from native SDK
+  const parseNativeResult = (result: any): { profile: any; accessToken: string | null; idToken: string | null } | null => {
+    console.log('[GoogleAuth] Parsing result structure:', Object.keys(result || {}));
+    
+    // Handle standard online response
+    if (result?.result && isOnlineResponse(result.result)) {
+      const onlineResult = result.result;
+      return {
+        profile: onlineResult.profile,
+        accessToken: onlineResult.accessToken?.token || null,
+        idToken: onlineResult.idToken || null,
+      };
+    }
+    
+    // Handle direct result (some SDK versions)
+    if (result?.result?.profile) {
+      return {
+        profile: result.result.profile,
+        accessToken: result.result.accessToken?.token || result.result.accessToken || null,
+        idToken: result.result.idToken || null,
+      };
+    }
+    
+    // Handle nested provider response
+    if (result?.result?.google) {
+      const google = result.result.google;
+      return {
+        profile: google.profile || google.user,
+        accessToken: google.accessToken?.token || google.accessToken || null,
+        idToken: google.idToken || null,
+      };
+    }
+    
+    // Handle flat response
+    if (result?.profile || result?.user) {
+      return {
+        profile: result.profile || result.user,
+        accessToken: result.accessToken?.token || result.accessToken || null,
+        idToken: result.idToken || null,
+      };
+    }
+    
+    return null;
+  };
+
   // NATIVE GOOGLE SIGN-IN SDK - No browser redirect, no OAuth URLs, no deep links
   const signIn = useCallback(async (): Promise<boolean> => {
     setIsLoading(true);
     try {
       console.log('[GoogleAuth] Starting native Google Sign-In...');
+      console.log('[GoogleAuth] Platform:', Capacitor.getPlatform());
+      console.log('[GoogleAuth] Is native:', Capacitor.isNativePlatform());
       
       if (!Capacitor.isNativePlatform()) {
         console.log('[GoogleAuth] Web platform - using popup OAuth');
         return await signInWeb();
       }
 
+      console.log('[GoogleAuth] Calling SocialLogin.login with scopes:', INITIAL_SCOPES);
+
       // NATIVE SIGN-IN using Google Sign-In SDK (play-services-auth)
-      const result = await SocialLogin.login({
+      // Add timeout to catch hanging promises
+      const loginPromise = SocialLogin.login({
         provider: 'google',
         options: {
           scopes: INITIAL_SCOPES,
         },
       });
-
-      console.log('[GoogleAuth] Native sign-in raw result:', JSON.stringify(result, null, 2));
-
-      // Check if it's an online response (we initialized with mode: 'online')
-      if (!result?.result || !isOnlineResponse(result.result)) {
-        console.error('[GoogleAuth] Expected online response but got offline');
+      
+      const timeoutPromise = new Promise<null>((_, reject) => {
+        setTimeout(() => reject(new Error('Sign-in timeout after 60 seconds')), 60000);
+      });
+      
+      let result: any;
+      try {
+        result = await Promise.race([loginPromise, timeoutPromise]);
+      } catch (raceError: any) {
+        console.error('[GoogleAuth] Login race error:', raceError?.message || raceError);
         setIsLoading(false);
         return false;
       }
 
-      const onlineResult = result.result;
-      const profile = onlineResult.profile;
-      const accessToken = onlineResult.accessToken?.token;
-      const idToken = onlineResult.idToken;
+      console.log('[GoogleAuth] Native sign-in raw result:', JSON.stringify(result, null, 2));
+      console.log('[GoogleAuth] Result type:', typeof result);
+      console.log('[GoogleAuth] Result keys:', result ? Object.keys(result) : 'null');
 
-      console.log('[GoogleAuth] Parsed - profile:', profile, 'accessToken:', !!accessToken, 'idToken:', !!idToken);
+      // Parse the result using flexible parsing
+      const parsed = parseNativeResult(result);
+      
+      if (!parsed) {
+        console.error('[GoogleAuth] Failed to parse result structure');
+        console.error('[GoogleAuth] Full result dump:', result);
+        setIsLoading(false);
+        return false;
+      }
+
+      const { profile, accessToken, idToken } = parsed;
+
+      console.log('[GoogleAuth] Parsed successfully:');
+      console.log('[GoogleAuth]   - profile:', JSON.stringify(profile));
+      console.log('[GoogleAuth]   - accessToken present:', !!accessToken);
+      console.log('[GoogleAuth]   - idToken present:', !!idToken);
 
       if (!profile) {
         console.error('[GoogleAuth] No profile data received');
@@ -315,21 +383,22 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return false;
       }
 
-      // CRITICAL: ID Token is REQUIRED
+      // CRITICAL: ID Token is REQUIRED for security
       if (!idToken) {
         console.error('[GoogleAuth] CRITICAL: ID Token is missing!');
+        console.error('[GoogleAuth] This usually means serverClientId is misconfigured');
         setIsLoading(false);
         return false;
       }
 
-      // Map profile data
+      // Map profile data with fallbacks
       const googleUser: GoogleUser = {
-        id: profile.id || '',
+        id: profile.id || profile.sub || '',
         email: profile.email || '',
-        name: profile.name || `${profile.givenName || ''} ${profile.familyName || ''}`.trim(),
-        givenName: profile.givenName || undefined,
-        familyName: profile.familyName || undefined,
-        imageUrl: profile.imageUrl || undefined,
+        name: profile.name || profile.displayName || `${profile.givenName || ''} ${profile.familyName || ''}`.trim(),
+        givenName: profile.givenName || profile.given_name || undefined,
+        familyName: profile.familyName || profile.family_name || undefined,
+        imageUrl: profile.imageUrl || profile.picture || profile.photoUrl || undefined,
       };
 
       const googleTokens: GoogleAuthTokens = {
@@ -362,6 +431,9 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return true;
     } catch (error: any) {
       console.error('[GoogleAuth] Sign-in error:', error);
+      console.error('[GoogleAuth] Error message:', error?.message);
+      console.error('[GoogleAuth] Error code:', error?.code);
+      console.error('[GoogleAuth] Error stack:', error?.stack);
       setIsLoading(false);
       return false;
     }
