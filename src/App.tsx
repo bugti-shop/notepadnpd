@@ -12,6 +12,7 @@ import { GoogleAuthProvider } from "@/contexts/GoogleAuthContext";
 import { NotesProvider } from "@/contexts/NotesContext";
 import OnboardingFlow from "@/components/OnboardingFlow";
 import { NavigationLoader } from "@/components/NavigationLoader";
+import { PersistentNotificationHandler } from "@/components/PersistentNotificationHandler";
 import Index from "./pages/Index";
 import Notes from "./pages/Notes";
 import NotesCalendar from "./pages/NotesCalendar";
@@ -31,6 +32,7 @@ import AuthCallback from "./pages/AuthCallback";
 import NotFound from "./pages/NotFound";
 import { NavigationBackProvider } from "@/components/NavigationBackProvider";
 import { notificationManager } from "@/utils/notifications";
+import { persistentNotificationManager } from "@/utils/persistentNotification";
 import { getSetting, setSetting } from "@/utils/settingsStorage";
 
 const queryClient = new QueryClient();
@@ -123,6 +125,7 @@ const AppContent = () => {
 
   useEffect(() => {
     notificationManager.initialize().catch(console.error);
+    persistentNotificationManager.initialize().catch(console.error);
   }, []);
 
   if (!hasSeenWelcome) {
@@ -133,6 +136,7 @@ const AppContent = () => {
     <>
       <Toaster />
       <Sonner />
+      <PersistentNotificationHandler />
       <AppRoutes />
     </>
   );
