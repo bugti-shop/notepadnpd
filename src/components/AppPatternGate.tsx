@@ -1,8 +1,13 @@
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Lock, Shield } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
+import { Lock, Shield, Fingerprint } from "lucide-react";
 import { isGlobalPatternLockEnabled, hasGlobalPatternLock } from "@/utils/patternLock";
+import { isBiometricEnabled, authenticateWithBiometric, getBiometricTypeName } from "@/utils/biometricAuth";
+import { getSetting } from "@/utils/settingsStorage";
 import { GlobalPatternUnlockSheet } from "./GlobalPatternUnlockSheet";
+import { useAutoLock, AutoLockTimeout } from "@/hooks/useAutoLock";
+import { triggerHaptic } from "@/utils/haptics";
+import { toast } from "sonner";
 
 interface AppPatternGateProps {
   children: React.ReactNode;
@@ -13,6 +18,21 @@ const AppPatternGate = ({ children }: AppPatternGateProps) => {
   const [requiresUnlock, setRequiresUnlock] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showUnlockSheet, setShowUnlockSheet] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricName, setBiometricName] = useState('Biometric');
+  const [isBiometricAuthenticating, setIsBiometricAuthenticating] = useState(false);
+
+  // Handle locking the app
+  const handleLock = useCallback(() => {
+    setIsUnlocked(false);
+    setShowUnlockSheet(false);
+  }, []);
+
+  // Auto-lock hook
+  useAutoLock({
+    onLock: handleLock,
+    enabled: requiresUnlock && isUnlocked,
+  });
 
   useEffect(() => {
     const checkGlobalLock = async () => {
@@ -24,6 +44,34 @@ const AppPatternGate = ({ children }: AppPatternGateProps) => {
         
         if (enabled && hasPattern) {
           setRequiresUnlock(true);
+          
+          // Check biometric availability
+          const [biometricEnabled, bioName] = await Promise.all([
+            isBiometricEnabled(),
+            getBiometricTypeName()
+          ]);
+          
+          setBiometricAvailable(biometricEnabled);
+          setBiometricName(bioName);
+          
+          // Try biometric first if enabled
+          if (biometricEnabled) {
+            try {
+              setIsBiometricAuthenticating(true);
+              const success = await authenticateWithBiometric();
+              if (success) {
+                await triggerHaptic('heavy');
+                setIsUnlocked(true);
+                setIsChecking(false);
+                return;
+              }
+            } catch (error) {
+              console.warn('Biometric failed, showing pattern:', error);
+            } finally {
+              setIsBiometricAuthenticating(false);
+            }
+          }
+          
           setShowUnlockSheet(true);
         }
       } catch (error) {
@@ -40,6 +88,23 @@ const AppPatternGate = ({ children }: AppPatternGateProps) => {
     setShowUnlockSheet(false);
   };
 
+  const handleBiometricUnlock = async () => {
+    try {
+      setIsBiometricAuthenticating(true);
+      const success = await authenticateWithBiometric();
+      if (success) {
+        await triggerHaptic('heavy');
+        toast.success('Unlocked!');
+        handleUnlock();
+      }
+    } catch (error) {
+      console.warn('Biometric authentication failed:', error);
+      toast.error('Biometric authentication failed');
+    } finally {
+      setIsBiometricAuthenticating(false);
+    }
+  };
+
   // Still checking - show nothing to prevent flash
   if (isChecking) {
     return (
@@ -49,7 +114,14 @@ const AppPatternGate = ({ children }: AppPatternGateProps) => {
           animate={{ opacity: 1, scale: 1 }}
           className="flex flex-col items-center gap-4"
         >
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          {isBiometricAuthenticating ? (
+            <>
+              <Fingerprint className="w-12 h-12 text-primary animate-pulse" />
+              <p className="text-sm text-muted-foreground">Authenticating...</p>
+            </>
+          ) : (
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          )}
         </motion.div>
       </div>
     );
@@ -81,15 +153,34 @@ const AppPatternGate = ({ children }: AppPatternGateProps) => {
               </p>
             </div>
 
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setShowUnlockSheet(true)}
-              className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl font-medium shadow-lg"
-            >
-              <Lock className="w-5 h-5" />
-              Unlock App
-            </motion.button>
+            <div className="flex flex-col gap-3 w-full">
+              {biometricAvailable && (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleBiometricUnlock}
+                  disabled={isBiometricAuthenticating}
+                  className="flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl font-medium shadow-lg disabled:opacity-50"
+                >
+                  <Fingerprint className="w-5 h-5" />
+                  {isBiometricAuthenticating ? 'Authenticating...' : `Unlock with ${biometricName}`}
+                </motion.button>
+              )}
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setShowUnlockSheet(true)}
+                className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-medium ${
+                  biometricAvailable 
+                    ? 'bg-secondary text-secondary-foreground' 
+                    : 'bg-primary text-primary-foreground shadow-lg'
+                }`}
+              >
+                <Lock className="w-5 h-5" />
+                Use Pattern
+              </motion.button>
+            </div>
           </motion.div>
         </motion.div>
 
