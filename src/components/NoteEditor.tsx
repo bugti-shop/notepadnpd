@@ -20,7 +20,7 @@ import { useHardwareBackButton } from '@/hooks/useHardwareBackButton';
 import { sanitizeForDisplay } from '@/lib/sanitize';
 
 import { ErrorBoundary } from './ErrorBoundary';
-import { ArrowLeft, Folder as FolderIcon, Plus, CalendarIcon, History, FileDown, Link2, ChevronDown, FileText, BookOpen, BarChart3, MoreVertical, Mic, Share2, Search, Image, Table, Minus, SeparatorHorizontal, MessageSquare, FileSymlink, FileType } from 'lucide-react';
+import { ArrowLeft, Folder as FolderIcon, Plus, CalendarIcon, History, FileDown, Link2, ChevronDown, FileText, BookOpen, BarChart3, MoreVertical, Mic, Share2, Search, Image, Table, Minus, SeparatorHorizontal, MessageSquare, FileSymlink, FileType, Bell, Clock, Repeat } from 'lucide-react';
 import { exportNoteToPdf, getPageBreakCount } from '@/utils/exportToPdf';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -868,6 +868,48 @@ export const NoteEditor = ({ note, isOpen, onClose, onSave, defaultType = 'regul
                   <FileText className="h-4 w-4 mr-2" />
                   {metaDescription ? t('editor.editMetaDescription') : t('editor.addMetaDescription')}
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                
+                {/* Note Reminder */}
+                <div className="px-2 py-1.5 text-sm font-semibold flex items-center gap-2">
+                  <Bell className="h-4 w-4" />
+                  {t('editor.reminder', 'Reminder')}
+                </div>
+                <div className="px-2 py-2 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">{t('editor.enableReminder', 'Enable')}</span>
+                    <Switch
+                      checked={reminderEnabled}
+                      onCheckedChange={setReminderEnabled}
+                    />
+                  </div>
+                  {reminderEnabled && (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <Input
+                          type="time"
+                          value={reminderTime}
+                          onChange={(e) => setReminderTime(e.target.value)}
+                          className="flex-1 h-8 text-sm"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Repeat className="h-4 w-4 text-muted-foreground" />
+                        <select
+                          value={reminderRecurring}
+                          onChange={(e) => setReminderRecurring(e.target.value as 'none' | 'daily' | 'weekly' | 'monthly')}
+                          className="flex-1 h-8 text-sm rounded-md border bg-background px-2"
+                        >
+                          <option value="none">{t('reminder.once', 'Once')}</option>
+                          <option value="daily">{t('reminder.daily', 'Daily')}</option>
+                          <option value="weekly">{t('reminder.weekly', 'Weekly')}</option>
+                          <option value="monthly">{t('reminder.monthly', 'Monthly')}</option>
+                        </select>
+                      </div>
+                    </>
+                  )}
+                </div>
                 <DropdownMenuSeparator />
                 
                 {/* Created & Modified Dates */}
