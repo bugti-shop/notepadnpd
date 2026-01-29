@@ -460,7 +460,6 @@ const Index = () => {
       !note.isDeleted && 
       !note.isArchived &&
       !note.isHidden && // Hide hidden notes from main view
-      isTypeVisible(note.type) && // Filter by visible note types
       (note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       note.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (note.metaDescription && note.metaDescription.toLowerCase().includes(searchQuery.toLowerCase())))
@@ -1181,31 +1180,41 @@ const Index = () => {
               {t('notes.newNote')}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="center" className="mb-2 w-48">
-            <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('sticky'); }} className="gap-2">
-              <StickyNote className="h-4 w-4 text-amber-500" />
-              {t('notes.noteTypes.sticky')}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('lined'); }} className="gap-2">
-              <FileText className="h-4 w-4 text-blue-500" />
-              {t('notes.noteTypes.lined')}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('regular'); }} className="gap-2">
-              <FileEdit className="h-4 w-4 text-emerald-500" />
-              {t('notes.noteTypes.regular')}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('sketch'); }} className="gap-2">
-              <Pen className="h-4 w-4 text-purple-500" />
-              {t('notes.noteTypes.sketch')}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('code'); }} className="gap-2">
-              <FileCode className="h-4 w-4 text-orange-500" />
-              {t('notes.noteTypes.code')}
-            </DropdownMenuItem>
+          <DropdownMenuContent align="center" className="mb-2 w-48 bg-card">
+            {isTypeVisible('sticky') && (
+              <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('sticky'); }} className="gap-2">
+                <StickyNote className="h-4 w-4 text-amber-500" />
+                {t('notes.noteTypes.sticky')}
+              </DropdownMenuItem>
+            )}
+            {isTypeVisible('sticky') && isTypeVisible('lined') && <DropdownMenuSeparator />}
+            {isTypeVisible('lined') && (
+              <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('lined'); }} className="gap-2">
+                <FileText className="h-4 w-4 text-blue-500" />
+                {t('notes.noteTypes.lined')}
+              </DropdownMenuItem>
+            )}
+            {isTypeVisible('lined') && isTypeVisible('regular') && <DropdownMenuSeparator />}
+            {isTypeVisible('regular') && (
+              <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('regular'); }} className="gap-2">
+                <FileEdit className="h-4 w-4 text-emerald-500" />
+                {t('notes.noteTypes.regular')}
+              </DropdownMenuItem>
+            )}
+            {isTypeVisible('regular') && isTypeVisible('sketch') && <DropdownMenuSeparator />}
+            {isTypeVisible('sketch') && (
+              <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('sketch'); }} className="gap-2">
+                <Pen className="h-4 w-4 text-purple-500" />
+                {t('notes.noteTypes.sketch')}
+              </DropdownMenuItem>
+            )}
+            {isTypeVisible('sketch') && isTypeVisible('code') && <DropdownMenuSeparator />}
+            {isTypeVisible('code') && (
+              <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('code'); }} className="gap-2">
+                <FileCode className="h-4 w-4 text-orange-500" />
+                {t('notes.noteTypes.code')}
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       )}
