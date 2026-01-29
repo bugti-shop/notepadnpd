@@ -184,14 +184,47 @@ export const PatternLockInput = ({
     }
   }, [error, resetPattern]);
 
+  // Direct tap handler for individual dots (Android WebView fix)
+  const handleDotTap = (index: number, e: React.TouchEvent | React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (disabled) return;
+    
+    if (!isDrawing) {
+      // Start a new pattern
+      setIsDrawing(true);
+      setSelectedDots([index]);
+      triggerHaptic('light');
+    } else if (!selectedDots.includes(index)) {
+      // Add to existing pattern
+      setSelectedDots(prev => [...prev, index]);
+      triggerHaptic('light');
+    }
+  };
+
+  // Handle tap end on a dot
+  const handleDotTapEnd = (e: React.TouchEvent | React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Don't end drawing on dot tap - wait for container touch end
+  };
+
   return (
     <div
       ref={containerRef}
       className={cn(
-        "relative touch-none select-none",
+        "relative select-none",
         disabled && "opacity-50 pointer-events-none"
       )}
-      style={{ width: gridSize, height: gridSize }}
+      style={{ 
+        width: gridSize, 
+        height: gridSize,
+        touchAction: 'none',
+        WebkitTouchCallout: 'none',
+        WebkitUserSelect: 'none',
+        userSelect: 'none',
+      }}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
@@ -206,6 +239,7 @@ export const PatternLockInput = ({
           className="absolute inset-0 pointer-events-none"
           width={gridSize}
           height={gridSize}
+          style={{ zIndex: 1 }}
         >
           {/* Lines between selected dots */}
           {selectedDots.map((dotIndex, i) => {
@@ -242,8 +276,11 @@ export const PatternLockInput = ({
         </svg>
       )}
 
-      {/* 3x3 Grid of dots */}
-      <div className="absolute inset-0 grid grid-cols-3 grid-rows-3">
+      {/* 3x3 Grid of dots - each dot is individually tappable */}
+      <div 
+        className="absolute inset-0 grid grid-cols-3 grid-rows-3"
+        style={{ zIndex: 2 }}
+      >
         {Array.from({ length: 9 }).map((_, index) => {
           const isSelected = selectedDots.includes(index);
           const order = selectedDots.indexOf(index);
@@ -252,19 +289,33 @@ export const PatternLockInput = ({
             <div
               key={index}
               className="flex items-center justify-center"
+              style={{ 
+                touchAction: 'none',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+              onTouchStart={(e) => handleDotTap(index, e)}
+              onTouchEnd={handleDotTapEnd}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleDotTap(index, e);
+              }}
             >
               <div
                 className={cn(
-                  "rounded-full transition-all duration-150",
+                  "rounded-full transition-all duration-150 cursor-pointer",
+                  "active:scale-125",
                   isSelected
                     ? error
                       ? "bg-destructive"
                       : "bg-primary scale-110"
-                    : "bg-muted-foreground/30"
+                    : "bg-muted-foreground/40 hover:bg-muted-foreground/60"
                 )}
                 style={{
                   width: isSelected ? selectedDotSize : dotSize,
                   height: isSelected ? selectedDotSize : dotSize,
+                  minWidth: dotSize,
+                  minHeight: dotSize,
+                  touchAction: 'none',
                 }}
               >
                 {/* Order indicator */}
