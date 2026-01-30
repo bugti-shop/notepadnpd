@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getSetting, setSetting } from '@/utils/settingsStorage';
-
+import { updateStatusBarStyle } from '@/utils/statusBar';
 export type ThemeId = 'light' | 'dark' | 'ocean' | 'forest' | 'sunset' | 'rose' | 'midnight' | 'minimal' | 'nebula' | 'obsidian' | 'graphite' | 'onyx' | 'charcoal';
 
 export const themes = [
@@ -58,6 +58,9 @@ export const useDarkMode = () => {
     if (currentTheme !== 'light') {
       document.documentElement.classList.add(currentTheme);
     }
+    
+    // Update status bar to match theme
+    updateStatusBarStyle(currentTheme !== 'light');
   }, [currentTheme, isLoaded]);
 
   // Cycle through all dark themes on toggle
