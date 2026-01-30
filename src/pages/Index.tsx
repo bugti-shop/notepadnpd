@@ -7,12 +7,10 @@ import { NoteEditor } from '@/components/NoteEditor';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { PersonalizedTips } from '@/components/PersonalizedTips';
 import { FolderManager } from '@/components/FolderManager';
-import { SyncBadge } from '@/components/SyncStatusIndicator';
+
 import { MasonryNotesGrid } from '@/components/MasonryNotesGrid';
 import { VirtualizedNotesGrid, VirtualizedNotesList, shouldVirtualizeNotes } from '@/components/VirtualizedNotesGrid';
-import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 import { useNoteTypeVisibility } from '@/hooks/useNoteTypeVisibility';
-import { syncManager } from '@/utils/syncManager';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -66,8 +64,6 @@ const Index = () => {
   const [viewMode, setViewMode] = useState<'notes' | 'trash' | 'archive'>('notes');
   const [isGridView, setIsGridView] = useState(false);
   const [showBulkFolderSheet, setShowBulkFolderSheet] = useState(false);
-  const { isOnline, isSyncing, hasError, lastSync } = useRealtimeSync();
-  const syncEnabled = syncManager.isSyncEnabled();
   
   
   // Note type selector dropdown state (for persistent notification integration)
@@ -598,14 +594,6 @@ const Index = () => {
               <h1 className="text-base xs:text-lg sm:text-xl font-bold">Npd</h1>
             </div>
             <div className="flex items-center gap-0.5 xs:gap-1 sm:gap-2 flex-shrink-0">
-              {syncEnabled && (
-                <SyncBadge
-                  isOnline={isOnline}
-                  isSyncing={isSyncing}
-                  lastSync={lastSync}
-                  hasError={hasError}
-                />
-              )}
               <Button
                 size="icon"
                 variant="ghost"

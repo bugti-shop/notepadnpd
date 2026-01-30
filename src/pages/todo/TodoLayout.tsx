@@ -4,9 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FileText, Search, Sun, Moon, X } from 'lucide-react';
 import { TodoBottomNavigation } from '@/components/TodoBottomNavigation';
-import { SyncBadge } from '@/components/SyncStatusIndicator';
-import { useRealtimeSync } from '@/hooks/useRealtimeSync';
-import { syncManager } from '@/utils/syncManager';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import appLogo from '@/assets/app-logo.png';
 import { triggerHaptic } from '@/utils/haptics';
@@ -21,8 +18,7 @@ interface TodoLayoutProps {
 export const TodoLayout = ({ children, title, searchValue, onSearchChange }: TodoLayoutProps) => {
   const navigate = useNavigate();
   const { isDarkMode, toggleDarkMode } = useDarkMode();
-  const { isOnline, isSyncing, hasError, lastSync } = useRealtimeSync();
-  const syncEnabled = syncManager.isSyncEnabled();
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -40,14 +36,6 @@ export const TodoLayout = ({ children, title, searchValue, onSearchChange }: Tod
               <h1 className="text-lg sm:text-xl font-bold truncate">{title}</h1>
             </div>
             <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0">
-              {syncEnabled && (
-                <SyncBadge
-                  isOnline={isOnline}
-                  isSyncing={isSyncing}
-                  lastSync={lastSync}
-                  hasError={hasError}
-                />
-              )}
               <Button
                 size="icon"
                 variant="ghost"

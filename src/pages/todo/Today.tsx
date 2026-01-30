@@ -55,7 +55,7 @@ import { ResolvedImageDialog } from '@/components/ResolvedImageDialog';
 import { playCompletionSound } from '@/utils/taskSounds';
 import { HideDetailsOptions } from '@/components/TaskOptionsSheet';
 import { logActivity } from '@/utils/activityLogger';
-import { AddToCalendarDialog, useCalendarEventPrompt } from '@/components/AddToCalendarDialog';
+
 
 type ViewMode = 'flat' | 'kanban' | 'kanban-status' | 'timeline' | 'progress' | 'priority' | 'history';
 type SortBy = 'date' | 'priority' | 'name' | 'created';
@@ -122,8 +122,6 @@ const Today = () => {
   // Flag to prevent saving settings before they're loaded from IndexedDB
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   
-  // Calendar event prompt hook
-  const { showPrompt: showCalendarPrompt, pendingTask, promptAddToCalendar, closePrompt: closeCalendarPrompt } = useCalendarEventPrompt();
 
   useEffect(() => {
     const loadAll = async () => {
@@ -320,21 +318,6 @@ const Today = () => {
     }
     setInputSectionId(null);
     
-    // Prompt to add to Google Calendar if task has a due date and calendar sync is enabled
-    if (newItem.dueDate && !newItem.googleCalendarEventId) {
-      promptAddToCalendar(newItem);
-    }
-  };
-  
-  // Handle calendar event created callback
-  const handleCalendarEventCreated = (eventId: string) => {
-    if (pendingTask) {
-      setItems(prev => prev.map(item => 
-        item.id === pendingTask.id 
-          ? { ...item, googleCalendarEventId: eventId }
-          : item
-      ));
-    }
   };
 
   const handleBatchAddTasks = async (taskTexts: string[], sectionId?: string, folderId?: string, priority?: Priority, dueDate?: Date) => {
@@ -2990,15 +2973,6 @@ const Today = () => {
         }}
       />
       
-      {/* Add to Google Calendar Dialog */}
-      {pendingTask && (
-        <AddToCalendarDialog
-          isOpen={showCalendarPrompt}
-          onClose={closeCalendarPrompt}
-          task={pendingTask}
-          onEventCreated={handleCalendarEventCreated}
-        />
-      )}
     </TodoLayout>
   );
 };

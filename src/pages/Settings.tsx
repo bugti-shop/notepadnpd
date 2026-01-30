@@ -324,7 +324,7 @@ const Settings = () => {
               <SettingsRow label={t('settings.quickAdd', 'Quick Add')} onClick={() => setShowQuickAddDialog(true)} />
             )}
             <SettingsRow label={t('settings.noteTypeVisibility', 'Note Type Visibility')} onClick={() => setShowNoteTypeVisibilitySheet(true)} />
-            <SettingsRow label={t('settings.integrationsImport')} onClick={() => navigate('/settings/sync')} />
+            
             <SettingsRow label={t('settings.backupData')} onClick={handleBackupData} />
             <SettingsRow label={t('settings.restoreData')} onClick={handleRestoreData} />
             <SettingsRow label={t('settings.downloadData')} onClick={handleDownloadData} />
