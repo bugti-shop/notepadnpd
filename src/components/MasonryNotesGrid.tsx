@@ -1,16 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Note } from '@/types/note';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Trash2, Archive, Grid3X3 } from 'lucide-react';
-import { hasPatternLock } from '@/utils/patternLock';
+import { Trash2, Archive } from 'lucide-react';
 
 interface MasonryNotesGridProps {
   notes: Note[];
   onEdit: (note: Note) => void;
   onDelete?: (noteId: string) => void;
   onArchive?: (noteId: string) => void;
-  onPatternLock?: (noteId: string) => void;
   isSelectionMode?: boolean;
   selectedNoteIds?: string[];
   onToggleSelection?: (noteId: string) => void;
@@ -52,7 +50,6 @@ interface SwipeableNoteCardProps {
   onEdit: (note: Note) => void;
   onDelete?: (noteId: string) => void;
   onArchive?: (noteId: string) => void;
-  onPatternLock?: (noteId: string) => void;
   isSelectionMode: boolean;
   isSelected: boolean;
   onToggleSelection?: (noteId: string) => void;
@@ -63,23 +60,15 @@ const SwipeableNoteCard: React.FC<SwipeableNoteCardProps> = ({
   onEdit,
   onDelete,
   onArchive,
-  onPatternLock,
   isSelectionMode,
   isSelected,
   onToggleSelection,
 }) => {
   const [swipeX, setSwipeX] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
-  const [isPatternLocked, setIsPatternLocked] = useState(false);
-  const [showActions, setShowActions] = useState(false);
   const startXRef = useRef(0);
   const currentXRef = useRef(0);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Check if note has pattern lock
-  useEffect(() => {
-    hasPatternLock(note.id).then(setIsPatternLocked);
-  }, [note.id]);
 
   const bgColor = getNoteColor(note);
   const plainContent = getPlainText(note.content);
@@ -90,12 +79,6 @@ const SwipeableNoteCard: React.FC<SwipeableNoteCardProps> = ({
     currentXRef.current = e.touches[0].clientX;
     setIsSwiping(true);
     
-    // Long press for showing actions (pattern lock)
-    longPressTimerRef.current = setTimeout(() => {
-      if (!isSwiping && onPatternLock) {
-        setShowActions(true);
-      }
-    }, 600);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -135,22 +118,12 @@ const SwipeableNoteCard: React.FC<SwipeableNoteCardProps> = ({
   };
 
   const handleClick = () => {
-    if (showActions) {
-      setShowActions(false);
-      return;
-    }
     if (Math.abs(swipeX) > 10) return; // Don't trigger click during swipe
     if (isSelectionMode && onToggleSelection) {
       onToggleSelection(note.id);
     } else {
       onEdit(note);
     }
-  };
-  
-  const handlePatternLockClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowActions(false);
-    onPatternLock?.(note.id);
   };
 
   return (
@@ -192,28 +165,6 @@ const SwipeableNoteCard: React.FC<SwipeableNoteCardProps> = ({
           transform: `translateX(${swipeX}px)`,
         }}
       >
-        {/* Pattern Lock indicator */}
-        {isPatternLocked && (
-          <div className="absolute top-2 right-2">
-            <Grid3X3 className="h-4 w-4 text-primary" />
-          </div>
-        )}
-        
-        {/* Long press actions overlay */}
-        {showActions && onPatternLock && (
-          <div 
-            className="absolute inset-0 bg-black/60 flex items-center justify-center z-10 animate-fade-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={handlePatternLockClick}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg"
-            >
-              <Grid3X3 className="h-4 w-4" />
-              {isPatternLocked ? 'Change Pattern' : 'Pattern Lock'}
-            </button>
-          </div>
-        )}
         
         {/* Title */}
         {note.title && (
@@ -222,21 +173,14 @@ const SwipeableNoteCard: React.FC<SwipeableNoteCardProps> = ({
           </h3>
         )}
         
-        {/* Content preview - blur if pattern locked */}
         {plainContent && (
-          <p className={cn(
-            "text-foreground/80 text-xs leading-relaxed mb-2 line-clamp-4 transition-all duration-300",
-            isPatternLocked && "blur-sm select-none"
-          )}>
+          <p className="text-foreground/80 text-xs leading-relaxed mb-2 line-clamp-4 transition-all duration-300">
             {truncateText(plainContent, 150)}
           </p>
         )}
         
         {/* Date badge */}
-        <div className={cn(
-          "inline-block transition-all duration-300",
-          isPatternLocked && "blur-sm"
-        )}>
+        <div className="inline-block">
           <span className="text-xs font-medium text-foreground/70 bg-background/30 px-2 py-0.5">
             {format(new Date(note.updatedAt), 'MM/dd/yy h:mm a')}
           </span>
@@ -251,7 +195,6 @@ export const MasonryNotesGrid: React.FC<MasonryNotesGridProps> = ({
   onEdit,
   onDelete,
   onArchive,
-  onPatternLock,
   isSelectionMode = false,
   selectedNoteIds = [],
   onToggleSelection,
@@ -275,7 +218,6 @@ export const MasonryNotesGrid: React.FC<MasonryNotesGridProps> = ({
       onEdit={onEdit}
       onDelete={onDelete}
       onArchive={onArchive}
-      onPatternLock={onPatternLock}
       isSelectionMode={isSelectionMode}
       isSelected={selectedNoteIds.includes(note.id)}
       onToggleSelection={onToggleSelection}

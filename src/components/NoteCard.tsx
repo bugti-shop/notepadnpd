@@ -2,11 +2,10 @@ import { useState, useRef, useEffect } from 'react';
 import { Note } from '@/types/note';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trash2, Edit, Mic, FileText, Pen, Pin, FileCode, GitBranch, AlignLeft, Archive, Star, Check, Copy, EyeOff, Shield, Lock, Grid3X3 } from 'lucide-react';
+import { Trash2, Edit, Mic, FileText, Pen, Pin, FileCode, GitBranch, AlignLeft, Archive, Star, Check, Copy, EyeOff, Shield, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { getNoteProtection, NoteProtection } from '@/utils/noteProtection';
-import { hasPatternLock } from '@/utils/patternLock';
 import { getSetting } from '@/utils/settingsStorage';
 import { logActivity } from '@/utils/activityLogger';
 import {
@@ -37,8 +36,6 @@ interface NoteCardProps {
   // Hide/Protect
   onHide?: (noteId: string) => void;
   onProtect?: (noteId: string) => void;
-  // Pattern Lock
-  onPatternLock?: (noteId: string) => void;
 }
 
 const STICKY_COLORS = {
@@ -62,12 +59,11 @@ const RANDOM_COLORS = [
   'hsl(60, 90%, 75%)',
 ];
 
-export const NoteCard = ({ note, onEdit, onDelete, onArchive, onTogglePin, onToggleFavorite, onDragStart, onDragOver, onDrop, onDragEnd, isSelectionMode = false, isSelected = false, onToggleSelection, onDuplicate, onHide, onProtect, onPatternLock }: NoteCardProps) => {
+export const NoteCard = ({ note, onEdit, onDelete, onArchive, onTogglePin, onToggleFavorite, onDragStart, onDragOver, onDrop, onDragEnd, isSelectionMode = false, isSelected = false, onToggleSelection, onDuplicate, onHide, onProtect }: NoteCardProps) => {
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
   const [noteProtection, setNoteProtection] = useState<NoteProtection>({ hasPassword: false, useBiometric: false });
-  const [isPatternLocked, setIsPatternLocked] = useState(false);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isLongPress = useRef(false);
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
@@ -76,7 +72,6 @@ export const NoteCard = ({ note, onEdit, onDelete, onArchive, onTogglePin, onTog
   // Load protection status async
   useEffect(() => {
     getNoteProtection(note.id).then(setNoteProtection);
-    hasPatternLock(note.id).then(setIsPatternLocked);
   }, [note.id]);
 
   const isSticky = note.type === 'sticky';
@@ -301,29 +296,19 @@ export const NoteCard = ({ note, onEdit, onDelete, onArchive, onTogglePin, onTog
             {note.isFavorite && (
               <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 shrink-0" />
             )}
-            {isPatternLocked && (
-              <Grid3X3 className="h-4 w-4 text-primary shrink-0" />
-            )}
             {(noteProtection.hasPassword || noteProtection.useBiometric) && (
               <Lock className="h-4 w-4 text-primary shrink-0" />
             )}
           </div>
 
           {/* Show metaDescription if available, otherwise show content preview */}
-          {/* Apply blur effect for pattern-locked notes */}
           {(note.metaDescription || note.content) && (
-            <p className={cn(
-              "text-sm text-black/70 mb-3 line-clamp-2 transition-all duration-300",
-              isPatternLocked && "blur-sm select-none"
-            )}>
+            <p className="text-sm text-black/70 mb-3 line-clamp-2 transition-all duration-300">
               {note.metaDescription || note.content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()}
             </p>
           )}
 
-          <div className={cn(
-            "flex items-center justify-between gap-2 text-xs text-black/60",
-            isPatternLocked && "blur-sm select-none"
-          )}>
+          <div className="flex items-center justify-between gap-2 text-xs text-black/60">
             <span>
               {new Date(note.updatedAt).toLocaleDateString('en-US', {
                 month: 'short',
@@ -386,12 +371,6 @@ export const NoteCard = ({ note, onEdit, onDelete, onArchive, onTogglePin, onTog
             <DropdownMenuItem onClick={() => { setShowContextMenu(false); onProtect(note.id); }} className="gap-2">
               <Shield className="h-4 w-4" />
               {noteProtection.hasPassword || noteProtection.useBiometric ? 'Change Protection' : 'Protect Note'}
-            </DropdownMenuItem>
-          )}
-          {onPatternLock && (
-            <DropdownMenuItem onClick={() => { setShowContextMenu(false); onPatternLock(note.id); }} className="gap-2">
-              <Grid3X3 className="h-4 w-4" />
-              {isPatternLocked ? 'Change Pattern Lock' : 'Pattern Lock'}
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
