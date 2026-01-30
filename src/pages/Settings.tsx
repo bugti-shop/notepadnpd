@@ -1,5 +1,5 @@
 import { BottomNavigation } from '@/components/BottomNavigation';
-import { ChevronRight, Settings as SettingsIcon, Crown, CreditCard, Palette, Check, Clock, Vibrate, ExternalLink, Globe, Bell, Eye } from 'lucide-react';
+import { ChevronRight, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -50,6 +50,7 @@ const Settings = () => {
   const [showHapticDialog, setShowHapticDialog] = useState(false);
   const [showLanguageDialog, setShowLanguageDialog] = useState(false);
   const [showNoteTypeVisibilitySheet, setShowNoteTypeVisibilitySheet] = useState(false);
+  const [showQuickAddDialog, setShowQuickAddDialog] = useState(false);
   const [hapticIntensity, setHapticIntensity] = useState<'off' | 'light' | 'medium' | 'heavy'>('medium');
   const [isRestoring, setIsRestoring] = useState(false);
   const [persistentNotificationEnabled, setPersistentNotificationEnabled] = useState(false);
@@ -287,24 +288,20 @@ const Settings = () => {
     }
   };
 
-  const settingsItems = [
-    { label: t('settings.backupData'), onClick: handleBackupData },
-    { label: t('settings.restoreData'), onClick: handleRestoreData },
-    { label: t('settings.downloadData'), onClick: handleDownloadData },
-    { label: t('settings.deleteData'), onClick: handleDeleteData },
-  ];
-
   const handleRateAndShare = () => {
     window.open('https://play.google.com/store/apps/details?id=nota.npd.com', '_blank');
   };
 
-  const otherItems = [
-    { label: t('settings.shareWithFriends'), onClick: handleRateAndShare },
-    { label: t('settings.termsOfService'), onClick: () => setShowTermsDialog(true) },
-    { label: t('settings.helpFeedback'), onClick: () => setShowHelpDialog(true) },
-    { label: t('settings.privacy'), onClick: () => setShowPrivacyDialog(true) },
-    { label: t('settings.rateApp'), onClick: handleRateAndShare },
-  ];
+  // Unified row style component
+  const SettingsRow = ({ label, onClick }: { label: string; onClick: () => void }) => (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center justify-between px-4 py-3 border-b border-border hover:bg-muted transition-colors"
+    >
+      <span className="text-foreground text-sm">{label}</span>
+      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+    </button>
+  );
 
   return (
     <div className="min-h-screen min-h-screen-dynamic bg-background pb-16 sm:pb-20">
@@ -317,167 +314,26 @@ const Settings = () => {
         </div>
       </header>
       <main className="container mx-auto px-2 xs:px-3 sm:px-4 py-3 xs:py-4 sm:py-6">
-        <div className="max-w-2xl mx-auto space-y-4 xs:space-y-6">
-          {/* Theme Switcher */}
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 px-4 py-3">
-              <Palette className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground text-sm font-medium">{t('settings.appearance')}</span>
-            </div>
-            <button
-              onClick={() => setShowThemeDialog(true)}
-              className="w-full flex items-center justify-between px-4 py-3 border-b border-border hover:bg-muted transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className={cn(
-                  "w-6 h-6 rounded-full border border-border",
-                  themes.find(t => t.id === currentTheme)?.preview
-                )} />
-                <span className="text-foreground text-sm">
-                  {themes.find(t => t.id === currentTheme)?.name || 'Light Mode'}
-                </span>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </button>
-          </div>
-
-          {/* Language */}
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 px-4 py-3">
-              <Globe className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground text-sm font-medium">{t('settings.language')}</span>
-            </div>
-            <button
-              onClick={() => setShowLanguageDialog(true)}
-              className="w-full flex items-center justify-between px-4 py-3 border-b border-border hover:bg-muted transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-foreground text-sm">{currentLanguage.nativeName}</span>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </button>
-          </div>
-
-          {/* Haptic Feedback */}
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 px-4 py-3">
-              <Vibrate className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground text-sm font-medium">{t('settings.hapticFeedback')}</span>
-            </div>
-            <button
-              onClick={() => setShowHapticDialog(true)}
-              className="w-full flex items-center justify-between px-4 py-3 border-b border-border hover:bg-muted transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-foreground text-sm">
-                  {hapticIntensity === 'off' ? t('settings.hapticOff') : t(`settings.haptic${hapticIntensity.charAt(0).toUpperCase() + hapticIntensity.slice(1)}`)}
-                </span>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </button>
-          </div>
-
-          {/* Persistent Notification Bar - Only show on native platforms */}
-          {Capacitor.isNativePlatform() && (
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 px-4 py-3">
-                <Bell className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground text-sm font-medium">
-                  {t('settings.quickAdd', 'Quick Add')}
-                </span>
-              </div>
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-foreground text-sm">
-                    {t('settings.notificationBar', 'Notification Bar')}
-                  </span>
-                  <span className="text-muted-foreground text-xs">
-                    {t('settings.notificationBarDesc', 'Add notes & tasks from notification')}
-                  </span>
-                </div>
-                <Switch 
-                  checked={persistentNotificationEnabled}
-                  onCheckedChange={handlePersistentNotificationToggle}
-                />
-              </div>
-              {persistentNotificationEnabled && (
-                <div className="px-4 py-2 text-xs text-muted-foreground bg-muted/30 border-b border-border">
-                  <p>📝 Tap "Add Note" to quickly create any note type (Text, Lined, Sticky, Code, or Sketch)</p>
-                  <p className="mt-1">✅ Tap "Add Task" to add a task without opening the app</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Note Type Visibility */}
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 px-4 py-3">
-              <Eye className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground text-sm font-medium">
-                {t('settings.noteTypes', 'Note Types')}
-              </span>
-            </div>
-            <button
-              onClick={() => setShowNoteTypeVisibilitySheet(true)}
-              className="w-full flex items-center justify-between px-4 py-3 border-b border-border hover:bg-muted transition-colors"
-            >
-              <div className="flex flex-col gap-0.5">
-                <span className="text-foreground text-sm">
-                  {t('settings.noteTypeVisibility', 'Note Type Visibility')}
-                </span>
-                <span className="text-muted-foreground text-xs">
-                  {t('settings.noteTypeVisibilityDesc', 'Show or hide note types')}
-                </span>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </button>
-          </div>
-
-
-          {/* Integrations & Import */}
-          <div className="space-y-1">
-            <button
-              onClick={() => navigate('/settings/sync')}
-              className="w-full flex items-center justify-between px-4 py-3 border-b border-border hover:bg-muted transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <ExternalLink className="h-5 w-5 text-primary" />
-                <span className="text-foreground text-sm">{t('settings.integrationsImport')}</span>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </button>
-          </div>
-
-
-
-          {/* Settings Items */}
-          <div className="space-y-1">
-          {settingsItems.map((item, index) => (
-            <button
-              key={index}
-              onClick={item.onClick}
-              className="w-full flex items-center justify-between px-4 py-3 border-b border-border hover:bg-muted transition-colors"
-            >
-              <span className="text-foreground text-sm">{item.label}</span>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </button>
-          ))}
-
-          <div className="flex items-center gap-2 px-4 py-3">
-            <SettingsIcon className="h-4 w-4 text-muted-foreground" />
-            <span className="text-muted-foreground text-sm font-medium">{t('settings.other')}</span>
-          </div>
-
-          {otherItems.map((item, index) => (
-            <button
-              key={index}
-              onClick={item.onClick}
-              className="w-full flex items-center justify-between px-4 py-3 border-b border-border hover:bg-muted transition-colors"
-            >
-              <span className="text-foreground text-sm">{item.label}</span>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </button>
-          ))}
+        <div className="max-w-2xl mx-auto">
+          {/* All settings in a single column with consistent style */}
+          <div className="border-t border-border">
+            <SettingsRow label={t('settings.appearance')} onClick={() => setShowThemeDialog(true)} />
+            <SettingsRow label={t('settings.language')} onClick={() => setShowLanguageDialog(true)} />
+            <SettingsRow label={t('settings.hapticFeedback')} onClick={() => setShowHapticDialog(true)} />
+            {Capacitor.isNativePlatform() && (
+              <SettingsRow label={t('settings.quickAdd', 'Quick Add')} onClick={() => setShowQuickAddDialog(true)} />
+            )}
+            <SettingsRow label={t('settings.noteTypeVisibility', 'Note Type Visibility')} onClick={() => setShowNoteTypeVisibilitySheet(true)} />
+            <SettingsRow label={t('settings.integrationsImport')} onClick={() => navigate('/settings/sync')} />
+            <SettingsRow label={t('settings.backupData')} onClick={handleBackupData} />
+            <SettingsRow label={t('settings.restoreData')} onClick={handleRestoreData} />
+            <SettingsRow label={t('settings.downloadData')} onClick={handleDownloadData} />
+            <SettingsRow label={t('settings.deleteData')} onClick={handleDeleteData} />
+            <SettingsRow label={t('settings.shareWithFriends')} onClick={handleRateAndShare} />
+            <SettingsRow label={t('settings.termsOfService')} onClick={() => setShowTermsDialog(true)} />
+            <SettingsRow label={t('settings.helpFeedback')} onClick={() => setShowHelpDialog(true)} />
+            <SettingsRow label={t('settings.privacy')} onClick={() => setShowPrivacyDialog(true)} />
+            <SettingsRow label={t('settings.rateApp')} onClick={handleRateAndShare} />
           </div>
         </div>
       </main>
@@ -653,10 +509,7 @@ const Settings = () => {
       <Dialog open={showThemeDialog} onOpenChange={setShowThemeDialog}>
         <DialogContent className="max-w-md max-h-[80vh]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Palette className="h-5 w-5" />
-              {t('settings.chooseTheme')}
-            </DialogTitle>
+            <DialogTitle>{t('settings.chooseTheme')}</DialogTitle>
           </DialogHeader>
           <ScrollArea className="h-[60vh] pr-4">
             <div className="grid grid-cols-2 gap-3">
@@ -695,10 +548,7 @@ const Settings = () => {
       <Dialog open={showHapticDialog} onOpenChange={setShowHapticDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Vibrate className="h-5 w-5" />
-              {t('settings.hapticFeedback')}
-            </DialogTitle>
+            <DialogTitle>{t('settings.hapticFeedback')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
             {(['off', 'light', 'medium', 'heavy'] as const).map((intensity) => (
@@ -741,10 +591,7 @@ const Settings = () => {
       <Dialog open={showLanguageDialog} onOpenChange={setShowLanguageDialog}>
         <DialogContent className="max-w-md max-h-[85vh]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Globe className="h-5 w-5" />
-              {t('settings.chooseLanguage')}
-            </DialogTitle>
+            <DialogTitle>{t('settings.chooseLanguage')}</DialogTitle>
           </DialogHeader>
           <ScrollArea className="h-[60vh] pr-4">
             <div className="space-y-2">
@@ -775,13 +622,42 @@ const Settings = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Quick Add Dialog (for native platforms) */}
+      <Dialog open={showQuickAddDialog} onOpenChange={setShowQuickAddDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('settings.quickAdd', 'Quick Add')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 rounded-lg border border-border">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-foreground text-sm font-medium">
+                  {t('settings.notificationBar', 'Notification Bar')}
+                </span>
+                <span className="text-muted-foreground text-xs">
+                  {t('settings.notificationBarDesc', 'Add notes & tasks from notification')}
+                </span>
+              </div>
+              <Switch 
+                checked={persistentNotificationEnabled}
+                onCheckedChange={handlePersistentNotificationToggle}
+              />
+            </div>
+            {persistentNotificationEnabled && (
+              <div className="px-4 py-3 text-xs text-muted-foreground bg-muted/30 rounded-lg">
+                <p>📝 Tap "Add Note" to quickly create any note type (Text, Lined, Sticky, Code, or Sketch)</p>
+                <p className="mt-1">✅ Tap "Add Task" to add a task without opening the app</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Note Type Visibility Sheet */}
       <NoteTypeVisibilitySheet
         isOpen={showNoteTypeVisibilitySheet}
         onClose={() => setShowNoteTypeVisibilitySheet(false)}
       />
-
-
     </div>
   );
 };
