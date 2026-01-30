@@ -128,7 +128,7 @@ class PersistentNotificationService implements PersistentNotificationManager {
 
       const notification: LocalNotificationSchema = {
         id: PERSISTENT_NOTIFICATION_ID,
-        title: '📋 NPD Quick Add',
+        title: 'Npd Quick Add',
         body: 'Tap to add notes or tasks quickly',
         actionTypeId: PERSISTENT_ACTION_TYPE_ID,
         ongoing: true, // Makes it persistent (can't be swiped away)
