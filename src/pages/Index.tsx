@@ -76,6 +76,9 @@ const Index = () => {
   const [patternSetupNoteId, setPatternSetupNoteId] = useState<string | null>(null);
   const [patternUnlockNoteId, setPatternUnlockNoteId] = useState<string | null>(null);
   const [unlockedNotes, setUnlockedNotes] = useState<Set<string>>(new Set());
+  
+  // Note type selector dropdown state (for persistent notification integration)
+  const [noteTypeSelectorOpen, setNoteTypeSelectorOpen] = useState(false);
 
   // Load all preferences from IndexedDB
   useEffect(() => {
@@ -142,7 +145,18 @@ const Index = () => {
     // Listen for folder updates from NoteEditor
     const handleFoldersUpdated = () => loadFolders();
     window.addEventListener('foldersUpdated', handleFoldersUpdated);
-    return () => window.removeEventListener('foldersUpdated', handleFoldersUpdated);
+    
+    // Listen for persistent notification "Add Note" action to open note type selector
+    const handleOpenNoteTypeSelector = () => {
+      console.log('[Index] Opening note type selector from notification');
+      setNoteTypeSelectorOpen(true);
+    };
+    window.addEventListener('openNoteTypeSelector', handleOpenNoteTypeSelector);
+    
+    return () => {
+      window.removeEventListener('foldersUpdated', handleFoldersUpdated);
+      window.removeEventListener('openNoteTypeSelector', handleOpenNoteTypeSelector);
+    };
   }, []);
 
   // Notes are now loaded from NotesContext - no local loading needed!
@@ -1169,7 +1183,7 @@ const Index = () => {
 
       {/* Floating Add Note Button - Hide when editor is open */}
       {!isEditorOpen && (
-        <DropdownMenu>
+        <DropdownMenu open={noteTypeSelectorOpen} onOpenChange={setNoteTypeSelectorOpen}>
           <DropdownMenuTrigger asChild>
             <Button
               className="fixed bottom-20 left-4 right-4 z-50 h-12 text-base font-semibold"
@@ -1182,42 +1196,42 @@ const Index = () => {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" className="mb-2 w-48 bg-card">
             {isTypeVisible('sticky') && (
-              <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('sticky'); }} className="gap-2">
+              <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('sticky'); setNoteTypeSelectorOpen(false); }} className="gap-2">
                 <StickyNote className="h-4 w-4 text-amber-500" />
                 {t('notes.noteTypes.sticky')}
               </DropdownMenuItem>
             )}
             {isTypeVisible('sticky') && isTypeVisible('lined') && <DropdownMenuSeparator />}
             {isTypeVisible('lined') && (
-              <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('lined'); }} className="gap-2">
+              <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('lined'); setNoteTypeSelectorOpen(false); }} className="gap-2">
                 <FileText className="h-4 w-4 text-blue-500" />
                 {t('notes.noteTypes.lined')}
               </DropdownMenuItem>
             )}
             {isTypeVisible('lined') && isTypeVisible('regular') && <DropdownMenuSeparator />}
             {isTypeVisible('regular') && (
-              <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('regular'); }} className="gap-2">
+              <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('regular'); setNoteTypeSelectorOpen(false); }} className="gap-2">
                 <FileEdit className="h-4 w-4 text-emerald-500" />
                 {t('notes.noteTypes.regular')}
               </DropdownMenuItem>
             )}
             {isTypeVisible('regular') && isTypeVisible('sketch') && <DropdownMenuSeparator />}
             {isTypeVisible('sketch') && (
-              <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('sketch'); }} className="gap-2">
+              <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('sketch'); setNoteTypeSelectorOpen(false); }} className="gap-2">
                 <Pen className="h-4 w-4 text-purple-500" />
                 {t('notes.noteTypes.sketch')}
               </DropdownMenuItem>
             )}
             {isTypeVisible('sketch') && isTypeVisible('code') && <DropdownMenuSeparator />}
             {isTypeVisible('code') && (
-              <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('code'); }} className="gap-2">
+              <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('code'); setNoteTypeSelectorOpen(false); }} className="gap-2">
                 <FileCode className="h-4 w-4 text-orange-500" />
                 {t('notes.noteTypes.code')}
               </DropdownMenuItem>
             )}
             {isTypeVisible('code') && isTypeVisible('voice') && <DropdownMenuSeparator />}
             {isTypeVisible('voice') && (
-              <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('voice'); }} className="gap-2">
+              <DropdownMenuItem onClick={() => { triggerHaptic('medium'); handleCreateNote('voice'); setNoteTypeSelectorOpen(false); }} className="gap-2">
                 <Mic className="h-4 w-4 text-red-500" />
                 {t('notes.noteTypes.voice')}
               </DropdownMenuItem>
