@@ -947,6 +947,9 @@ export const RichTextEditor = ({
         if (newContent === lastContentRef.current) return;
         lastContentRef.current = newContent;
         
+        // Try auto-calculation for math expressions ending with =
+        tryAutoCalculate();
+        
         // For large content (>50KB), debounce the onChange call
         const isLargeContent = newContent.length > 50000;
         
@@ -956,19 +959,20 @@ export const RichTextEditor = ({
             clearTimeout(debouncedOnChangeRef.current);
           }
           debouncedOnChangeRef.current = setTimeout(() => {
-            onChange(newContent);
+            onChange(editorRef.current?.innerHTML || newContent);
           }, 300);
         } else {
           // Immediate update for small content
-          onChange(newContent);
+          onChange(editorRef.current?.innerHTML || newContent);
         }
 
         // Add to history (but not during composition to avoid flooding)
         // Also limit history size for large content
         if (!isComposingRef.current) {
           const maxHistorySize = isLargeContent ? 10 : 50;
+          const currentContent = editorRef.current?.innerHTML || newContent;
           const newHistory = history.slice(Math.max(0, history.length - maxHistorySize), historyIndex + 1);
-          newHistory.push(newContent);
+          newHistory.push(currentContent);
           setHistory(newHistory);
           setHistoryIndex(newHistory.length - 1);
         }
@@ -978,72 +982,83 @@ export const RichTextEditor = ({
     }
   };
 
-  // Handle keydown for auto-capitalization and auto-calculation
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    // Auto-calculate when = is typed
-    if (e.key === '=' && editorRef.current) {
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        const textNode = range.startContainer;
-        if (textNode.nodeType === Node.TEXT_NODE) {
-          const text = textNode.textContent || '';
-          const cursorPos = range.startOffset;
-          // Get text before cursor including the = that will be typed
-          const textBeforeCursor = text.substring(0, cursorPos);
-          
-          // Schedule auto-calculation after the = is inserted
-          setTimeout(() => {
-            if (!editorRef.current) return;
-            const sel = window.getSelection();
-            if (!sel || sel.rangeCount === 0) return;
-            
-            const currentRange = sel.getRangeAt(0);
-            const currentTextNode = currentRange.startContainer;
-            if (currentTextNode.nodeType !== Node.TEXT_NODE) return;
-            
-            const currentText = currentTextNode.textContent || '';
-            const currentPos = currentRange.startOffset;
-            const textToCheck = currentText.substring(0, currentPos);
-            
-            // Try to calculate
-            const result = autoCalculate(textToCheck);
-            if (result !== null) {
-              // Insert the result after the = sign
-              const newText = currentText.substring(0, currentPos) + result + currentText.substring(currentPos);
-              currentTextNode.textContent = newText;
-              
-              // Move cursor after the result
-              const newRange = document.createRange();
-              newRange.setStart(currentTextNode, currentPos + result.length);
-              newRange.setEnd(currentTextNode, currentPos + result.length);
-              sel.removeAllRanges();
-              sel.addRange(newRange);
-              
-              // Trigger input to save
-              handleInput();
-            }
-          }, 10);
-        }
-      }
+  // Auto-calculate math expressions when user types = at the end
+  const tryAutoCalculate = useCallback(() => {
+    if (!editorRef.current) return;
+    
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    
+    const range = selection.getRangeAt(0);
+    const textNode = range.startContainer;
+    
+    // Only work with text nodes
+    if (textNode.nodeType !== Node.TEXT_NODE) return;
+    
+    const text = textNode.textContent || '';
+    const cursorPos = range.startOffset;
+    
+    // Get text before cursor
+    const textBeforeCursor = text.substring(0, cursorPos);
+    
+    // Check if text ends with a math expression followed by =
+    // Pattern: numbers and operators ending with =
+    const mathPattern = /([0-9+\-*/().^%\s]+)=$/;
+    const match = textBeforeCursor.match(mathPattern);
+    
+    if (!match) return;
+    
+    // Verify there's at least one operator in the expression
+    const expression = match[1].trim();
+    if (!/[+\-*/^%]/.test(expression)) return;
+    
+    // Calculate the result
+    const result = autoCalculate(textBeforeCursor);
+    if (result === null) return;
+    
+    // Insert the result after the = sign with styling
+    const styledResult = ` ${result}`;
+    
+    // Create a styled span for the result
+    const resultSpan = document.createElement('span');
+    resultSpan.textContent = styledResult;
+    resultSpan.style.color = 'hsl(var(--muted-foreground))';
+    resultSpan.style.fontWeight = '500';
+    resultSpan.className = 'auto-calc-result';
+    
+    // Insert at cursor position
+    const afterText = text.substring(cursorPos);
+    textNode.textContent = textBeforeCursor;
+    
+    // Insert the styled result span
+    const parentNode = textNode.parentNode;
+    if (!parentNode) return;
+    
+    // Create text node for any remaining text
+    const afterTextNode = document.createTextNode(afterText);
+    
+    // Insert result span and remaining text after the current text node
+    if (textNode.nextSibling) {
+      parentNode.insertBefore(resultSpan, textNode.nextSibling);
+      parentNode.insertBefore(afterTextNode, resultSpan.nextSibling);
+    } else {
+      parentNode.appendChild(resultSpan);
+      parentNode.appendChild(afterTextNode);
     }
     
+    // Move cursor to after the result
+    const newRange = document.createRange();
+    newRange.setStartAfter(resultSpan);
+    newRange.setEndAfter(resultSpan);
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+  }, []);
+
+  // Handle keydown - simplified since auto-calculation is now handled in handleInput
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     // Auto-capitalize after sentence-ending punctuation followed by space
-    if (e.key === ' ' && editorRef.current) {
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        const textNode = range.startContainer;
-        if (textNode.nodeType === Node.TEXT_NODE) {
-          const text = textNode.textContent || '';
-          const cursorPos = range.startOffset;
-          // Check if previous char is sentence-ending punctuation
-          if (cursorPos > 0 && /[.!?]/.test(text[cursorPos - 1])) {
-            // The next character typed should be capitalized - handled by browser autocapitalize
-          }
-        }
-      }
-    }
+    // This is mostly handled by browser's autocapitalize attribute
+    // We keep this hook for potential future keyboard shortcuts
   }, []);
 
   // Handle composition events for Android/IME input
