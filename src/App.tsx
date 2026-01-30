@@ -8,7 +8,6 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WelcomeProvider, useWelcome } from "@/contexts/WelcomeContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { RevenueCatProvider } from "@/contexts/RevenueCatContext";
-import { GoogleAuthProvider } from "@/contexts/GoogleAuthContext";
 import { NotesProvider } from "@/contexts/NotesContext";
 import OnboardingFlow from "@/components/OnboardingFlow";
 import { NavigationLoader } from "@/components/NavigationLoader";
@@ -19,7 +18,6 @@ import Notes from "./pages/Notes";
 import NotesCalendar from "./pages/NotesCalendar";
 import WebClipper from "./pages/WebClipper";
 import Settings from "./pages/Settings";
-import SyncSettingsPage from "./pages/SyncSettingsPage";
 import Reminders from "./pages/Reminders";
 import Today from "./pages/todo/Today";
 import Upcoming from "./pages/todo/Upcoming";
@@ -29,7 +27,6 @@ import CustomToolDetail from "./pages/todo/CustomToolDetail";
 import WeeklyReview from "./pages/todo/WeeklyReview";
 import WidgetsDashboard from "./pages/todo/WidgetsDashboard";
 import TaskHistory from "./pages/todo/TaskHistory";
-import AuthCallback from "./pages/AuthCallback";
 import NotFound from "./pages/NotFound";
 import { NavigationBackProvider } from "@/components/NavigationBackProvider";
 import { notificationManager } from "@/utils/notifications";
@@ -128,7 +125,6 @@ const AppRoutes = () => {
           <Route path="/calendar" element={<NotesCalendar />} />
           <Route path="/clip" element={<WebClipper />} />
           <Route path="/settings" element={<Settings />} />
-          <Route path="/settings/sync" element={<SyncSettingsPage />} />
           <Route path="/reminders" element={<Reminders />} />
           <Route path="/todo/today" element={<Today />} />
           <Route path="/todo/upcoming" element={<Upcoming />} />
@@ -138,7 +134,6 @@ const AppRoutes = () => {
           <Route path="/todo/weekly-review" element={<WeeklyReview />} />
           <Route path="/todo/dashboard" element={<WidgetsDashboard />} />
           <Route path="/todo/history" element={<TaskHistory />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </NavigationBackProvider>
@@ -173,15 +168,13 @@ const App = () => (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <RevenueCatProvider>
-          <GoogleAuthProvider>
-            <NotesProvider>
-              <WelcomeProvider>
-                <SubscriptionProvider>
-                  <AppContent />
-                </SubscriptionProvider>
-              </WelcomeProvider>
-            </NotesProvider>
-          </GoogleAuthProvider>
+          <NotesProvider>
+            <WelcomeProvider>
+              <SubscriptionProvider>
+                <AppContent />
+              </SubscriptionProvider>
+            </WelcomeProvider>
+          </NotesProvider>
         </RevenueCatProvider>
       </TooltipProvider>
     </QueryClientProvider>

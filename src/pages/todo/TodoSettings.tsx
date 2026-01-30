@@ -1,4 +1,4 @@
-import { ChevronRight, Settings as SettingsIcon, Palette, Check, ExternalLink, Bell } from 'lucide-react';
+import { ChevronRight, Settings as SettingsIcon, Palette, Check, Bell } from 'lucide-react';
 import { useDarkMode, themes } from '@/hooks/useDarkMode';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
@@ -212,19 +212,6 @@ const TodoSettings = () => {
             </button>
           </div>
 
-          {/* Integrations & Import Section */}
-          <div className="bg-card border rounded-lg">
-            <button
-              onClick={() => navigate('/settings/sync')}
-              className="w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <ExternalLink className="h-5 w-5 text-emerald-500" />
-                <span className="text-foreground text-sm font-medium">{t('settings.integrationsImport')}</span>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </button>
-          </div>
 
           {/* Auto-Reminder Settings */}
           <div className="bg-card border rounded-lg">

@@ -37,11 +37,9 @@ import featureSwipeComplete from '@/assets/feature-swipe-complete.png';
 import featureSwipeDelete from '@/assets/feature-swipe-delete.png';
 import showcaseFolders from '@/assets/showcase-folders.png';
 import showcaseAvatars from '@/assets/showcase-avatars.png';
-import googleLogo from '@/assets/logo-google-drive.png';
 import { PRICING_DISPLAY } from '@/lib/billing';
 import { Capacitor } from '@capacitor/core';
 import { triggerHaptic } from '@/utils/haptics';
-import { useGoogleAuth } from '@/contexts/GoogleAuthContext';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
 
 interface OnboardingFlowProps {
@@ -52,7 +50,6 @@ export default function OnboardingFlow({
   onComplete
 }: OnboardingFlowProps) {
   const { t } = useTranslation();
-  const { signIn, isAuthenticated, user, isLoading: isGoogleLoading } = useGoogleAuth();
   const { isPro, checkEntitlement } = useRevenueCat();
   const [showWelcome, setShowWelcome] = useState(true);
   const [step, setStep] = useState(1);
@@ -237,30 +234,7 @@ export default function OnboardingFlow({
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setIsSigningIn(true);
-    try {
-      const success = await signIn();
-      if (success) {
-        // Check if user already has an active subscription
-        const hasActiveSubscription = await checkEntitlement();
-        
-        if (hasActiveSubscription) {
-          // User is already a paid subscriber, skip paywall and go directly to app
-          console.log('[Onboarding] User has active subscription, skipping paywall');
-          onComplete();
-        } else {
-          // User is not subscribed, continue to next step (paywall)
-          handleContinue();
-        }
-      }
-    } catch (error) {
-      console.error('Google sign in failed:', error);
-    } finally {
-      setIsSigningIn(false);
-    }
-  };
-
+  // Google auth step removed - skip directly to next step
   const handleSkipGoogleSignIn = () => {
     triggerHaptic('light');
     handleContinue();
@@ -1594,6 +1568,7 @@ export default function OnboardingFlow({
           </section>
         )}
 
+        {/* Step 31 removed - Google sync was here */}
         {step === 31 && (
           <motion.section 
             key="step31"
@@ -1606,70 +1581,20 @@ export default function OnboardingFlow({
             className="mt-8 text-center flex flex-col items-center"
           >
             <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-              <img src={googleLogo} alt="Google Drive" className="w-10 h-10" />
+              <CheckSquare className="w-10 h-10 text-primary" />
             </div>
             
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('onboarding.googleSync.title', 'Sync Your Data')}</h1>
-            <p className="text-gray-500 text-sm mb-8 max-w-xs">
-              {t('onboarding.googleSync.subtitle', 'Sign in with Google to sync your notes, tasks, and folders across all your devices.')}
+            <h1 className="text-2xl font-bold text-foreground mb-2">{t('onboarding.almostDone', 'Almost Done!')}</h1>
+            <p className="text-muted-foreground text-sm mb-8 max-w-xs">
+              {t('onboarding.almostDoneDesc', 'Your app is ready to use. Let\'s get started!')}
             </p>
 
-            {isAuthenticated && user ? (
-              <div className="flex flex-col items-center gap-4">
-                <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-                  {user.imageUrl && (
-                    <img src={user.imageUrl} alt={user.name} className="w-8 h-8 rounded-full" />
-                  )}
-                  <div className="text-left">
-                    <p className="font-medium text-green-800">{t('onboarding.googleSync.signedInAs', 'Signed in as')}</p>
-                    <p className="text-sm text-green-600">{user.email}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleContinue}
-                  className="w-72 btn-duo"
-                >
-                  {t('onboarding.continue')}
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-4">
-                <button
-                  onClick={handleGoogleSignIn}
-                  onTouchEnd={(e) => {
-                    // Ensure touch events work on Android WebView
-                    e.preventDefault();
-                    if (!isSigningIn && !isGoogleLoading) {
-                      handleGoogleSignIn();
-                    }
-                  }}
-                  disabled={isSigningIn || isGoogleLoading}
-                  className="w-72 flex items-center justify-center gap-3 bg-white border-2 border-gray-200 rounded-xl py-3 px-6 font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 active:scale-[0.98] transition-all disabled:opacity-50 touch-manipulation select-none"
-                  style={{ WebkitTapHighlightColor: 'transparent' }}
-                >
-                  {isSigningIn || isGoogleLoading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <img src={googleLogo} alt="Google" className="w-6 h-6 pointer-events-none" />
-                  )}
-                  <span className="pointer-events-none">
-                    {isSigningIn ? t('common.loading') : t('onboarding.googleSync.continueWithGoogle', 'Continue with Google')}
-                  </span>
-                </button>
-                
-                <button
-                  onClick={handleSkipGoogleSignIn}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                    handleSkipGoogleSignIn();
-                  }}
-                  className="text-gray-400 text-sm underline touch-manipulation select-none active:text-gray-600"
-                  style={{ WebkitTapHighlightColor: 'transparent' }}
-                >
-                  {t('onboarding.googleSync.skip', 'Skip for now')}
-                </button>
-              </div>
-            )}
+            <button
+              onClick={handleContinue}
+              className="w-72 btn-duo"
+            >
+              {t('onboarding.continue')}
+            </button>
           </motion.section>
         )}
 
