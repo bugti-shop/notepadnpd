@@ -183,52 +183,42 @@ const TodoSettings = () => {
     { label: t('settings.rateApp'), onClick: handleRateAndShare },
   ];
 
+  // Section heading component for consistency
+  const SectionHeading = ({ title }: { title: string }) => (
+    <div className="px-4 py-2 bg-muted/50">
+      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{title}</span>
+    </div>
+  );
+
   return (
     <TodoLayout title={t('settings.title')}>
       <main className="container mx-auto px-4 py-6 pb-24">
-        <div className="max-w-2xl mx-auto space-y-6">
-          {/* Theme Switcher Section */}
-          <div className="bg-card border rounded-lg">
-            <div className="p-4 border-b">
-              <div className="flex items-center gap-2">
-                <Palette className="h-5 w-5 text-primary" />
-                <h2 className="font-semibold">{t('settings.appearance')}</h2>
-              </div>
-            </div>
+        <div className="max-w-2xl mx-auto space-y-4">
+          {/* Preferences Group */}
+          <div className="border rounded-lg overflow-hidden bg-card">
+            <SectionHeading title={t('settings.preferences', 'Preferences')} />
+            
+            {/* Appearance */}
             <button
               onClick={() => setShowThemeDialog(true)}
-              className="w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/50 transition-colors"
+              className="w-full flex items-center justify-between px-4 py-3 border-b border-border/50 hover:bg-secondary/50 transition-colors"
             >
               <div className="flex items-center gap-3">
                 <div className={cn(
-                  "w-6 h-6 rounded-full border border-border",
+                  "w-5 h-5 rounded-full border border-border",
                   themes.find(t => t.id === currentTheme)?.preview
                 )} />
-                <span className="text-foreground text-sm">
-                  {themes.find(t => t.id === currentTheme)?.name || 'Light Mode'}
-                </span>
+                <span className="text-foreground text-sm">{t('settings.appearance')}</span>
               </div>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
-          </div>
-
-
-          {/* Auto-Reminder Settings */}
-          <div className="bg-card border rounded-lg">
-            <div className="p-4 border-b">
-              <div className="flex items-center gap-2">
-                <Bell className="h-5 w-5 text-primary" />
-                <h2 className="font-semibold">{t('settings.autoReminderSettings')}</h2>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t('settings.autoReminderNote')}
-              </p>
-            </div>
+            
+            {/* Auto-Reminder Times */}
             <button
               onClick={() => setShowAutoReminderDialog(true)}
-              className="w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/50 transition-colors"
+              className="w-full flex items-center justify-between px-4 py-3 border-b border-border/50 hover:bg-secondary/50 transition-colors"
             >
-              <div className="flex flex-col items-start gap-1">
+              <div className="flex flex-col items-start gap-0.5">
                 <span className="text-foreground text-sm">{t('settings.reminderTimes')}</span>
                 <span className="text-xs text-muted-foreground">
                   {formatHour(morningReminderHour)}, {formatHour(afternoonReminderHour)}, {formatHour(eveningReminderHour)}
@@ -238,29 +228,35 @@ const TodoSettings = () => {
             </button>
           </div>
 
-          {/* Settings Items */}
-          <div className="space-y-1">
+          {/* Data Management Group */}
+          <div className="border rounded-lg overflow-hidden bg-card">
+            <SectionHeading title={t('settings.dataManagement', 'Data Management')} />
             {settingsItems.map((item, index) => (
               <button
                 key={index}
                 onClick={item.onClick}
-                className="w-full flex items-center justify-between px-4 py-3 border-b border-border hover:bg-secondary/50 transition-colors"
+                className={cn(
+                  "w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/50 transition-colors",
+                  index < settingsItems.length - 1 && "border-b border-border/50"
+                )}
               >
                 <span className="text-foreground text-sm">{item.label}</span>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </button>
             ))}
+          </div>
 
-            <div className="flex items-center gap-2 px-4 py-3">
-              <SettingsIcon className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground text-sm font-medium">{t('settings.other')}</span>
-            </div>
-
+          {/* About & Support Group */}
+          <div className="border rounded-lg overflow-hidden bg-card">
+            <SectionHeading title={t('settings.aboutSupport', 'About & Support')} />
             {otherItems.map((item, index) => (
               <button
                 key={index}
                 onClick={item.onClick}
-                className="w-full flex items-center justify-between px-4 py-3 border-b border-border hover:bg-secondary/50 transition-colors"
+                className={cn(
+                  "w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/50 transition-colors",
+                  index < otherItems.length - 1 && "border-b border-border/50"
+                )}
               >
                 <span className="text-foreground text-sm">{item.label}</span>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
