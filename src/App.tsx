@@ -119,6 +119,7 @@ const AppRoutes = () => {
       <NavigationBackProvider>
         <NavigationLoader />
         <DashboardTracker />
+        <PersistentNotificationHandler />
         <Routes>
           <Route path="/" element={<RootRedirect />} />
           <Route path="/notes" element={<Notes />} />
@@ -157,7 +158,6 @@ const AppContent = () => {
     <>
       <Toaster />
       <Sonner />
-      <PersistentNotificationHandler />
       <AppRoutes />
     </>
   );
