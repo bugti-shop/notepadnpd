@@ -392,7 +392,6 @@ const Index = () => {
     setSelectedNote(note);
     setIsEditorOpen(true);
   };
-  };
 
   const handleCreateFolder = (name: string, color: string) => {
     const newFolder: Folder = {
