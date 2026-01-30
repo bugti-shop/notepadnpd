@@ -3,7 +3,14 @@
 
 /**
  * Safely evaluates a mathematical expression
- * Supports: +, -, *, /, ^, parentheses, x (as multiplication)
+ * Supports: +, -, *, /, ^, parentheses, x (as multiplication), % (percentage)
+ * 
+ * Percentage handling:
+ * - "50+10%" means 50 + (10% of 50) = 55
+ * - "100-20%" means 100 - (20% of 100) = 80
+ * - "50*10%" means 50 * 0.1 = 5
+ * - "100/50%" means 100 / 0.5 = 200
+ * 
  * Works completely offline
  */
 export const safeEvaluate = (expression: string): number | null => {
@@ -14,12 +21,12 @@ export const safeEvaluate = (expression: string): number | null => {
     // Replace common multiplication symbols with *
     cleaned = cleaned.replace(/×/g, '*').replace(/x/gi, '*').replace(/÷/g, '/');
     
-    // Validate: only allow numbers, operators, decimal points, and parentheses
+    // Validate: only allow numbers, operators, decimal points, parentheses, and %
     if (!/^[0-9+\-*/().^%]+$/.test(cleaned)) {
       return null;
     }
     
-    // Prevent empty or single-number expressions
+    // Prevent empty or single-number expressions (but allow % as operator)
     if (!/[+\-*/^%]/.test(cleaned)) {
       return null;
     }
@@ -27,8 +34,25 @@ export const safeEvaluate = (expression: string): number | null => {
     // Replace ^ with ** for exponentiation
     cleaned = cleaned.replace(/\^/g, '**');
     
-    // Replace % with /100 for percentage
-    cleaned = cleaned.replace(/(\d+)%/g, '($1/100)');
+    // Handle percentage calculations
+    // Pattern: number followed by +/- and number with %
+    // "50+10%" -> 50 + (50 * 10 / 100) = 55
+    // "100-20%" -> 100 - (100 * 20 / 100) = 80
+    cleaned = cleaned.replace(/(\d+(?:\.\d+)?)\s*([+\-])\s*(\d+(?:\.\d+)?)%/g, (match, base, op, percent) => {
+      const baseNum = parseFloat(base);
+      const percentNum = parseFloat(percent);
+      const percentValue = (baseNum * percentNum) / 100;
+      return `${baseNum}${op}${percentValue}`;
+    });
+    
+    // Handle multiplication/division with percentage: "50*10%" -> 50 * 0.1, "100/50%" -> 100 / 0.5
+    cleaned = cleaned.replace(/([*/])\s*(\d+(?:\.\d+)?)%/g, (match, op, percent) => {
+      const percentNum = parseFloat(percent);
+      return `${op}${percentNum / 100}`;
+    });
+    
+    // Handle standalone percentage at end (e.g., after other operations)
+    cleaned = cleaned.replace(/(\d+(?:\.\d+)?)%/g, '($1/100)');
     
     // Prevent dangerous patterns (letters other than operators)
     if (/[a-zA-Z_$]/.test(cleaned)) {
@@ -60,7 +84,7 @@ export const safeEvaluate = (expression: string): number | null => {
  * Detects patterns like "3+4=" and returns the expression before =
  */
 export const detectMathExpression = (text: string): { expression: string; position: number } | null => {
-  // Match patterns like "3+4=", "10*5=", "(2+3)*4=", "56x45=", etc.
+  // Match patterns like "3+4=", "10*5=", "(2+3)*4=", "56x45=", "50+10%=", etc.
   // The pattern should end with = and be preceded by a valid math expression
   // Include 'x' and '×' as multiplication symbols
   const regex = /([0-9+\-*/().^%×÷x\s]+)=$/i;
@@ -85,6 +109,8 @@ export const detectMathExpression = (text: string): { expression: string; positi
  * Input: "3+4=" -> Output: "7"
  * Input: "56*45=" -> Output: "2520"
  * Input: "56x45=" -> Output: "2520"
+ * Input: "50+10%=" -> Output: "55"
+ * Input: "100-20%=" -> Output: "80"
  */
 export const autoCalculate = (text: string): string | null => {
   const detected = detectMathExpression(text);

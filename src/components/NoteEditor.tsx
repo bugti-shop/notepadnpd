@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RichTextEditor } from './RichTextEditor';
 import { getTableStyles, TableStyle } from './TableEditor';
-import { FindReplacePage } from './FindReplacePage';
+import { InlineFindReplace } from './InlineFindReplace';
 import { SketchEditor } from './SketchEditor';
 import { VirtualizedCodeEditor } from './VirtualizedCodeEditor';
 import { TemplateSelector } from './TemplateSelector';
@@ -1014,6 +1014,14 @@ export const NoteEditor = ({ note, isOpen, onClose, onSave, defaultType = 'regul
         </div>
       )}
 
+      {/* Inline Find & Replace - appears below header when active */}
+      <InlineFindReplace
+        isOpen={isFindReplaceOpen}
+        onClose={() => setIsFindReplaceOpen(false)}
+        editorRef={editorRef}
+        onContentChange={setContent}
+      />
+
       {/* Word Count Stats Bar with Page Indicator - only shows when enabled */}
       {showStats && (
         <div className="px-4 py-2 border-b bg-muted/50 flex items-center justify-between text-xs text-muted-foreground" style={{ borderColor: 'rgba(0,0,0,0.1)' }}>
@@ -1294,14 +1302,7 @@ export const NoteEditor = ({ note, isOpen, onClose, onSave, defaultType = 'regul
         onSelectNote={handleInsertNoteLink}
       />
 
-      {/* Find & Replace Page */}
-      <FindReplacePage
-        isOpen={isFindReplaceOpen}
-        onClose={() => setIsFindReplaceOpen(false)}
-        content={content}
-        onContentChange={setContent}
-        editorRef={editorRef}
-      />
+      {/* Inline Find & Replace - removed, now rendered inline in header */}
 
       {/* Input Sheet Pages - Replace window.prompt */}
       <InputSheetPage

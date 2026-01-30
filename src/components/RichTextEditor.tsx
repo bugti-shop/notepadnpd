@@ -1016,14 +1016,14 @@ export const RichTextEditor = ({
     const result = autoCalculate(textBeforeCursor);
     if (result === null) return;
     
-    // Insert the result after the = sign with styling
-    const styledResult = ` ${result}`;
-    
-    // Create a styled span for the result
+    // Insert the result after the = sign with distinctive styling
+    // Create a styled span for the result (italic, smaller, muted color)
     const resultSpan = document.createElement('span');
-    resultSpan.textContent = styledResult;
+    resultSpan.textContent = ` ${result}`;
     resultSpan.style.color = 'hsl(var(--muted-foreground))';
-    resultSpan.style.fontWeight = '500';
+    resultSpan.style.fontStyle = 'italic';
+    resultSpan.style.fontSize = '0.9em';
+    resultSpan.style.opacity = '0.85';
     resultSpan.className = 'auto-calc-result';
     
     // Insert at cursor position
