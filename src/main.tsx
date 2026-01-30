@@ -3,12 +3,13 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import "./i18n";
-import { migrateLocalStorageToIndexedDB } from "./utils/settingsStorage";
+import { migrateLocalStorageToIndexedDB, getSetting } from "./utils/settingsStorage";
 import { migrateNotesToIndexedDB } from "./utils/noteStorage";
 import { startBackgroundScheduler } from "./utils/backgroundScheduler";
 import { initializeTaskOrder } from "./utils/taskOrderStorage";
 import { initializeNotificationHistory } from "./types/notificationHistory";
 import { initializeProtectionSettings } from "./utils/noteProtection";
+import { configureStatusBar } from "./utils/statusBar";
 
 // Simple loading fallback for slow connections - inline styled for instant render
 const LoadingFallback = () => (
@@ -52,6 +53,11 @@ const AppWithMigration = () => {
         
         // Start background scheduler for automatic task rollovers
         startBackgroundScheduler();
+        
+        // Configure status bar for native apps
+        const theme = await getSetting<string>('theme', 'light');
+        const isDarkMode = theme !== 'light';
+        await configureStatusBar(isDarkMode);
       } catch (error) {
         console.error('Migration error:', error);
       }
