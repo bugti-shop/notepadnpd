@@ -28,7 +28,7 @@ export const BottomNavigation = () => {
         transform: 'translateZ(0)',
       }}
     >
-      <div className="grid grid-cols-4 h-12 xs:h-14 sm:h-14 max-w-screen-lg mx-auto px-1">
+      <div className="grid grid-cols-4 h-10 xs:h-11 sm:h-12 max-w-screen-lg mx-auto px-1">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
