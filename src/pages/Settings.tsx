@@ -303,6 +303,13 @@ const Settings = () => {
     </button>
   );
 
+  // Section heading component
+  const SectionHeading = ({ title }: { title: string }) => (
+    <div className="px-4 py-2 bg-muted/50">
+      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{title}</span>
+    </div>
+  );
+
   return (
     <div className="min-h-screen min-h-screen-dynamic bg-background pb-16 sm:pb-20">
       <header className="border-b sticky top-0 bg-card z-10">
@@ -314,26 +321,42 @@ const Settings = () => {
         </div>
       </header>
       <main className="container mx-auto px-2 xs:px-3 sm:px-4 py-3 xs:py-4 sm:py-6">
-        <div className="max-w-2xl mx-auto">
-          {/* All settings in a single column with consistent style */}
-          <div className="border-t border-border">
+        <div className="max-w-2xl mx-auto space-y-4">
+          {/* Preferences Section */}
+          <div className="border border-border rounded-lg overflow-hidden">
+            <SectionHeading title={t('settings.preferences', 'Preferences')} />
             <SettingsRow label={t('settings.appearance')} onClick={() => setShowThemeDialog(true)} />
             <SettingsRow label={t('settings.language')} onClick={() => setShowLanguageDialog(true)} />
             <SettingsRow label={t('settings.hapticFeedback')} onClick={() => setShowHapticDialog(true)} />
             {Capacitor.isNativePlatform() && (
               <SettingsRow label={t('settings.quickAdd', 'Quick Add')} onClick={() => setShowQuickAddDialog(true)} />
             )}
-            <SettingsRow label={t('settings.noteTypeVisibility', 'Note Type Visibility')} onClick={() => setShowNoteTypeVisibilitySheet(true)} />
-            
+            <div className="border-b-0">
+              <SettingsRow label={t('settings.noteTypeVisibility', 'Note Type Visibility')} onClick={() => setShowNoteTypeVisibilitySheet(true)} />
+            </div>
+          </div>
+
+          {/* Data Management Section */}
+          <div className="border border-border rounded-lg overflow-hidden">
+            <SectionHeading title={t('settings.dataManagement', 'Data Management')} />
             <SettingsRow label={t('settings.backupData')} onClick={handleBackupData} />
             <SettingsRow label={t('settings.restoreData')} onClick={handleRestoreData} />
             <SettingsRow label={t('settings.downloadData')} onClick={handleDownloadData} />
-            <SettingsRow label={t('settings.deleteData')} onClick={handleDeleteData} />
-            <SettingsRow label={t('settings.shareWithFriends')} onClick={handleRateAndShare} />
+            <div className="border-b-0">
+              <SettingsRow label={t('settings.deleteData')} onClick={handleDeleteData} />
+            </div>
+          </div>
+
+          {/* About & Support Section */}
+          <div className="border border-border rounded-lg overflow-hidden">
+            <SectionHeading title={t('settings.aboutSupport', 'About & Support')} />
+            <SettingsRow label={t('settings.shareWithFriends')} onClick={handleShareApp} />
             <SettingsRow label={t('settings.termsOfService')} onClick={() => setShowTermsDialog(true)} />
             <SettingsRow label={t('settings.helpFeedback')} onClick={() => setShowHelpDialog(true)} />
             <SettingsRow label={t('settings.privacy')} onClick={() => setShowPrivacyDialog(true)} />
-            <SettingsRow label={t('settings.rateApp')} onClick={handleRateAndShare} />
+            <div className="border-b-0">
+              <SettingsRow label={t('settings.rateApp')} onClick={handleRateAndShare} />
+            </div>
           </div>
         </div>
       </main>
