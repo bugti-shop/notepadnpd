@@ -16,6 +16,9 @@ import { getSetting, setSetting, getAllSettings, clearAllSettings } from '@/util
 import { persistentNotificationManager } from '@/utils/persistentNotification';
 import { Switch } from '@/components/ui/switch';
 import { NoteTypeVisibilitySheet } from '@/components/NoteTypeVisibilitySheet';
+import { NotesSettingsSheet } from '@/components/NotesSettingsSheet';
+import { TasksSettingsSheet } from '@/components/TasksSettingsSheet';
+import { CustomizeNavigationSheet } from '@/components/CustomizeNavigationSheet';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,6 +54,9 @@ const Settings = () => {
   const [showLanguageDialog, setShowLanguageDialog] = useState(false);
   const [showNoteTypeVisibilitySheet, setShowNoteTypeVisibilitySheet] = useState(false);
   const [showQuickAddDialog, setShowQuickAddDialog] = useState(false);
+  const [showNotesSettingsSheet, setShowNotesSettingsSheet] = useState(false);
+  const [showTasksSettingsSheet, setShowTasksSettingsSheet] = useState(false);
+  const [showCustomizeNavigationSheet, setShowCustomizeNavigationSheet] = useState(false);
   const [hapticIntensity, setHapticIntensity] = useState<'off' | 'light' | 'medium' | 'heavy'>('medium');
   const [isRestoring, setIsRestoring] = useState(false);
   const [persistentNotificationEnabled, setPersistentNotificationEnabled] = useState(false);
@@ -331,8 +337,11 @@ const Settings = () => {
             {Capacitor.isNativePlatform() && (
               <SettingsRow label={t('settings.quickAdd', 'Quick Add')} onClick={() => setShowQuickAddDialog(true)} />
             )}
+            <SettingsRow label={t('settings.noteTypeVisibility', 'Note Type Visibility')} onClick={() => setShowNoteTypeVisibilitySheet(true)} />
+            <SettingsRow label={t('settings.notesSettings', 'Notes Settings')} onClick={() => setShowNotesSettingsSheet(true)} />
+            <SettingsRow label={t('settings.tasksSettings', 'Tasks Settings')} onClick={() => setShowTasksSettingsSheet(true)} />
             <div className="border-b-0">
-              <SettingsRow label={t('settings.noteTypeVisibility', 'Note Type Visibility')} onClick={() => setShowNoteTypeVisibilitySheet(true)} />
+              <SettingsRow label={t('settings.customizeNavigation', 'Customize Navigation')} onClick={() => setShowCustomizeNavigationSheet(true)} />
             </div>
           </div>
 
@@ -680,6 +689,21 @@ const Settings = () => {
       <NoteTypeVisibilitySheet
         isOpen={showNoteTypeVisibilitySheet}
         onClose={() => setShowNoteTypeVisibilitySheet(false)}
+      />
+
+      <NotesSettingsSheet
+        isOpen={showNotesSettingsSheet}
+        onClose={() => setShowNotesSettingsSheet(false)}
+      />
+
+      <TasksSettingsSheet
+        isOpen={showTasksSettingsSheet}
+        onClose={() => setShowTasksSettingsSheet(false)}
+      />
+
+      <CustomizeNavigationSheet
+        isOpen={showCustomizeNavigationSheet}
+        onClose={() => setShowCustomizeNavigationSheet(false)}
       />
     </div>
   );
