@@ -12,6 +12,7 @@ import { NotesProvider } from "@/contexts/NotesContext";
 import OnboardingFlow from "@/components/OnboardingFlow";
 import { NavigationLoader } from "@/components/NavigationLoader";
 import { PersistentNotificationHandler } from "@/components/PersistentNotificationHandler";
+import { NotificationActionsHandler } from "@/components/NotificationActionsHandler";
 
 import Index from "./pages/Index";
 import Notes from "./pages/Notes";
@@ -120,6 +121,7 @@ const AppRoutes = () => {
         <NavigationLoader />
         <DashboardTracker />
         <PersistentNotificationHandler />
+        <NotificationActionsHandler />
         <Routes>
           <Route path="/" element={<RootRedirect />} />
           <Route path="/notes" element={<Notes />} />

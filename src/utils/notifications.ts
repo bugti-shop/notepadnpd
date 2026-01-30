@@ -22,9 +22,10 @@ export interface NotificationData {
   priority?: Priority;
 }
 
-export type SnoozeOption = '5min' | '15min' | '1hour';
+export type SnoozeOption = '5min' | '15min' | '1hour' | '3hours' | 'tomorrow';
 
-export const SNOOZE_ACTION_TYPE_ID = 'SNOOZE_ACTION_TYPE';
+export const TASK_REMINDER_ACTION_TYPE_ID = 'TASK_REMINDER_ACTION_TYPE';
+export const SNOOZE_ACTION_TYPE_ID = 'SNOOZE_ACTION_TYPE'; // Keep for backward compatibility
 
 export class NotificationManager {
   private static instance: NotificationManager;
@@ -65,24 +66,38 @@ export class NotificationManager {
       await LocalNotifications.registerActionTypes({
         types: [
           {
+            // Main action type for task/note reminders with Complete, Schedule, Snooze
+            id: TASK_REMINDER_ACTION_TYPE_ID,
+            actions: [
+              {
+                id: 'complete',
+                title: 'Complete',
+              },
+              {
+                id: 'schedule',
+                title: 'Schedule',
+              },
+              {
+                id: 'snooze',
+                title: 'Snooze',
+              },
+            ],
+          },
+          {
+            // Legacy snooze action type for backward compatibility
             id: SNOOZE_ACTION_TYPE_ID,
             actions: [
               {
-                id: 'snooze_5min',
-                title: 'Snooze 5 min',
+                id: 'complete',
+                title: 'Complete',
               },
               {
-                id: 'snooze_15min',
-                title: 'Snooze 15 min',
+                id: 'schedule',
+                title: 'Schedule',
               },
               {
-                id: 'snooze_1hour',
-                title: 'Snooze 1 hour',
-              },
-              {
-                id: 'dismiss',
-                title: 'Dismiss',
-                destructive: true,
+                id: 'snooze',
+                title: 'Snooze',
               },
             ],
           },
@@ -141,7 +156,39 @@ export class NotificationManager {
     const actionId = action.actionId;
     const extra = notification.extra as NotificationData | undefined;
 
-    // Handle snooze actions
+    // Handle Complete action - mark task as done
+    if (actionId === 'complete') {
+      if (extra?.taskId) {
+        window.dispatchEvent(new CustomEvent('completeTaskFromNotification', { 
+          detail: { taskId: extra.taskId } 
+        }));
+      }
+      this.markNotificationAsRead(notification.id);
+      return;
+    }
+
+    // Handle Schedule action - open app to reschedule
+    if (actionId === 'schedule') {
+      if (extra?.taskId) {
+        window.dispatchEvent(new CustomEvent('scheduleTaskFromNotification', { 
+          detail: { taskId: extra.taskId, notification } 
+        }));
+      } else if (extra?.noteId) {
+        window.dispatchEvent(new CustomEvent('scheduleNoteFromNotification', { 
+          detail: { noteId: extra.noteId, notification } 
+        }));
+      }
+      this.markNotificationAsRead(notification.id);
+      return;
+    }
+
+    // Handle Snooze action - snooze for 1 hour by default
+    if (actionId === 'snooze') {
+      await this.snoozeNotification(notification, '1hour');
+      return;
+    }
+
+    // Handle legacy snooze actions (backward compatibility)
     if (actionId.startsWith('snooze_')) {
       const snoozeType = actionId.replace('snooze_', '') as SnoozeOption;
       await this.snoozeNotification(notification, snoozeType);
@@ -150,7 +197,6 @@ export class NotificationManager {
 
     // Handle dismiss action
     if (actionId === 'dismiss') {
-      // Just mark as read and don't reschedule
       this.markNotificationAsRead(notification.id);
       return;
     }
@@ -184,9 +230,18 @@ export class NotificationManager {
           snoozeTime = addHours(new Date(), 1);
           snoozeLabel = '1 hour';
           break;
+        case '3hours':
+          snoozeTime = addHours(new Date(), 3);
+          snoozeLabel = '3 hours';
+          break;
+        case 'tomorrow':
+          snoozeTime = addDays(new Date(), 1);
+          snoozeTime.setHours(9, 0, 0, 0); // Tomorrow at 9 AM
+          snoozeLabel = 'tomorrow 9 AM';
+          break;
         default:
-          snoozeTime = addMinutes(new Date(), 5);
-          snoozeLabel = '5 minutes';
+          snoozeTime = addHours(new Date(), 1);
+          snoozeLabel = '1 hour';
       }
 
       const extra = notification.extra as NotificationData | undefined;
@@ -201,7 +256,7 @@ export class NotificationManager {
             schedule: { at: snoozeTime },
             sound: undefined,
             attachments: undefined,
-            actionTypeId: SNOOZE_ACTION_TYPE_ID,
+            actionTypeId: TASK_REMINDER_ACTION_TYPE_ID,
             smallIcon: DEFAULT_NOTIFICATION_ICON,
             largeIcon: DEFAULT_NOTIFICATION_ICON,
             extra: {
@@ -403,7 +458,7 @@ export class NotificationManager {
               schedule: { at: occurrenceDate },
               sound: undefined,
               attachments: undefined,
-              actionTypeId: SNOOZE_ACTION_TYPE_ID,
+              actionTypeId: TASK_REMINDER_ACTION_TYPE_ID,
               smallIcon: DEFAULT_NOTIFICATION_ICON,
               largeIcon: DEFAULT_NOTIFICATION_ICON,
               extra: {
@@ -427,7 +482,7 @@ export class NotificationManager {
             schedule: { at: reminderTime },
             sound: undefined,
             attachments: undefined,
-            actionTypeId: SNOOZE_ACTION_TYPE_ID,
+            actionTypeId: TASK_REMINDER_ACTION_TYPE_ID,
             smallIcon: DEFAULT_NOTIFICATION_ICON,
             largeIcon: DEFAULT_NOTIFICATION_ICON,
             extra: {
@@ -497,7 +552,7 @@ export class NotificationManager {
             schedule: { at: occurrenceDate },
             sound: undefined,
             attachments: undefined,
-            actionTypeId: SNOOZE_ACTION_TYPE_ID,
+            actionTypeId: TASK_REMINDER_ACTION_TYPE_ID,
             smallIcon: DEFAULT_NOTIFICATION_ICON,
             largeIcon: DEFAULT_NOTIFICATION_ICON,
             extra: {
