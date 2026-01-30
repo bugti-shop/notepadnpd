@@ -60,11 +60,23 @@ const Settings = () => {
   const [hapticIntensity, setHapticIntensity] = useState<'off' | 'light' | 'medium' | 'heavy'>('medium');
   const [isRestoring, setIsRestoring] = useState(false);
   const [persistentNotificationEnabled, setPersistentNotificationEnabled] = useState(false);
+  
+  // Notification settings
+  const [taskRemindersEnabled, setTaskRemindersEnabled] = useState(true);
+  const [noteRemindersEnabled, setNoteRemindersEnabled] = useState(true);
+  const [dailyDigestEnabled, setDailyDigestEnabled] = useState(false);
+  const [overdueAlertsEnabled, setOverdueAlertsEnabled] = useState(true);
 
   // Load settings from IndexedDB
   useEffect(() => {
     getSetting<'off' | 'light' | 'medium' | 'heavy'>('haptic_intensity', 'medium').then(setHapticIntensity);
     persistentNotificationManager.isEnabled().then(setPersistentNotificationEnabled);
+    
+    // Load notification settings
+    getSetting<boolean>('taskRemindersEnabled', true).then(setTaskRemindersEnabled);
+    getSetting<boolean>('noteRemindersEnabled', true).then(setNoteRemindersEnabled);
+    getSetting<boolean>('dailyDigestEnabled', false).then(setDailyDigestEnabled);
+    getSetting<boolean>('overdueAlertsEnabled', true).then(setOverdueAlertsEnabled);
   }, []);
 
   const handlePersistentNotificationToggle = async (enabled: boolean) => {
@@ -95,6 +107,32 @@ const Settings = () => {
     toast({ title: t('settings.languageChanged', { language: lang?.nativeName || langCode }) });
     setShowLanguageDialog(false);
   };
+
+  // Notification toggle handlers
+  const handleTaskRemindersToggle = async (enabled: boolean) => {
+    setTaskRemindersEnabled(enabled);
+    await setSetting('taskRemindersEnabled', enabled);
+    toast({ title: enabled ? t('settings.taskRemindersEnabled', 'Task reminders enabled') : t('settings.taskRemindersDisabled', 'Task reminders disabled') });
+  };
+
+  const handleNoteRemindersToggle = async (enabled: boolean) => {
+    setNoteRemindersEnabled(enabled);
+    await setSetting('noteRemindersEnabled', enabled);
+    toast({ title: enabled ? t('settings.noteRemindersEnabled', 'Note reminders enabled') : t('settings.noteRemindersDisabled', 'Note reminders disabled') });
+  };
+
+  const handleDailyDigestToggle = async (enabled: boolean) => {
+    setDailyDigestEnabled(enabled);
+    await setSetting('dailyDigestEnabled', enabled);
+    toast({ title: enabled ? t('settings.dailyDigestEnabled', 'Daily digest enabled') : t('settings.dailyDigestDisabled', 'Daily digest disabled') });
+  };
+
+  const handleOverdueAlertsToggle = async (enabled: boolean) => {
+    setOverdueAlertsEnabled(enabled);
+    await setSetting('overdueAlertsEnabled', enabled);
+    toast({ title: enabled ? t('settings.overdueAlertsEnabled', 'Overdue alerts enabled') : t('settings.overdueAlertsDisabled', 'Overdue alerts disabled') });
+  };
+
   const [notes, setNotes] = useState<Note[]>([]);
 
   // Load notes for hidden notes section
@@ -340,8 +378,59 @@ const Settings = () => {
             <SettingsRow label={t('settings.noteTypeVisibility', 'Note Type Visibility')} onClick={() => setShowNoteTypeVisibilitySheet(true)} />
             <SettingsRow label={t('settings.notesSettings', 'Notes Settings')} onClick={() => setShowNotesSettingsSheet(true)} />
             <SettingsRow label={t('settings.tasksSettings', 'Tasks Settings')} onClick={() => setShowTasksSettingsSheet(true)} />
-            <div className="border-b-0">
-              <SettingsRow label={t('settings.customizeNavigation', 'Customize Navigation')} onClick={() => setShowCustomizeNavigationSheet(true)} />
+            <SettingsRow label={t('settings.customizeNavigation', 'Customize Navigation')} onClick={() => setShowCustomizeNavigationSheet(true)} />
+          </div>
+
+          {/* Notifications Section */}
+          <div className="border border-border rounded-lg overflow-hidden">
+            <SectionHeading title={t('settings.notifications', 'Notifications')} />
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+              <div className="flex-1 pr-4">
+                <span className="text-foreground text-sm block">{t('settings.taskReminders', 'Task Reminders')}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t('settings.taskRemindersDesc', 'Receive notifications for task due dates')}
+                </span>
+              </div>
+              <Switch
+                checked={taskRemindersEnabled}
+                onCheckedChange={handleTaskRemindersToggle}
+              />
+            </div>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+              <div className="flex-1 pr-4">
+                <span className="text-foreground text-sm block">{t('settings.noteReminders', 'Note Reminders')}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t('settings.noteRemindersDesc', 'Receive notifications for note reminders')}
+                </span>
+              </div>
+              <Switch
+                checked={noteRemindersEnabled}
+                onCheckedChange={handleNoteRemindersToggle}
+              />
+            </div>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+              <div className="flex-1 pr-4">
+                <span className="text-foreground text-sm block">{t('settings.dailyDigest', 'Daily Digest')}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t('settings.dailyDigestDesc', 'Morning summary of today\'s tasks')}
+                </span>
+              </div>
+              <Switch
+                checked={dailyDigestEnabled}
+                onCheckedChange={handleDailyDigestToggle}
+              />
+            </div>
+            <div className="flex items-center justify-between px-4 py-3">
+              <div className="flex-1 pr-4">
+                <span className="text-foreground text-sm block">{t('settings.overdueAlerts', 'Overdue Alerts')}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t('settings.overdueAlertsDesc', 'Get notified about overdue tasks')}
+                </span>
+              </div>
+              <Switch
+                checked={overdueAlertsEnabled}
+                onCheckedChange={handleOverdueAlertsToggle}
+              />
             </div>
           </div>
 
