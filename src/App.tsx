@@ -108,15 +108,9 @@ const RootRedirect = () => {
     };
   }, [navigate]);
   
-  // Show minimal loading while checking (very fast, usually imperceptible)
+  // Return null while checking - no splash screen, just instant load
   if (!isReady) {
-    return (
-      <div className="min-h-screen min-h-screen-dynamic bg-background flex items-center justify-center">
-        <div className="animate-pulse">
-          <img src="/nota-logo.png" alt="Npd" className="h-16 w-16 opacity-50" />
-        </div>
-      </div>
-    );
+    return null;
   }
   
   return <Index />;
